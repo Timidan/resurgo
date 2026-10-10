@@ -24,6 +24,10 @@ PACKAGE_JSON_KEYS = {"packageManager", "engines", "volta", "pnpm", "overrides", 
                      "devEngines"}
 LOCKFILE_NAMES = {n for n, _ in LOCKFILES} | {"Cargo.lock"}
 UNFIXABLE_STEPS = {"toolchain"}
+GAP_STEPS = {"test", "serve"}      # a gap is accepted only here: install and build have passed
+FOUNDRY_FILTER = re.compile(r"^\s*(no_match_test|no_match_contract|no_match_path|match_test|"
+                            r"match_contract|match_path)\s*=\s*(.*?)\s*$", re.M)
+TEST_FILE = re.compile(r"(^|/)(tests?/|[^/]*\.t\.sol$|[^/]*\.(test|spec)\.[^/]+$)")
 MANIFEST_BYTES = 12_000
 
 SYSTEM = """You repair a project (Node.js, Foundry or Rust) that fails on a fresh machine. \
@@ -42,7 +46,12 @@ kind "code": any change to source, tests, scripts, dependencies or build setup (
 turbo.json), including package.json fields other than those above. A code fix is applied in an \
 isolated sandbox only to verify that it works, then held for the owner's approval; it is never \
 merged on its own. Prefer a config fix when one exists. Never make a step pass by removing, \
-skipping or weakening a test, a build or a check."""
+skipping or weakening a test, a build or a check: edits that add test filters, delete test files \
+or change the package.json test script are rejected.
+kind "gap": when the failing step is test or serve and it fails only because it needs an \
+external service or credential a fresh machine cannot have (for example an Ethereum RPC \
+endpoint), reply {"kind": "gap", "reason": "<the service or credential the step needs>", \
+"rationale": "<why>", "confidence": <0 to 1>} and change nothing. Never for install or build."""
 
 
 class State(TypedDict, total=False):
@@ -72,8 +81,13 @@ def parse_proposal(raw):
         return None, f"not valid JSON: {e}"
     if not isinstance(p, dict):
         return None, "top level must be a JSON object"
-    if p.get("kind") not in ("config", "code"):
-        return None, 'kind must be "config" or "code"'
+    if p.get("kind") not in ("config", "code", "gap"):
+        return None, 'kind must be "config", "code" or "gap"'
+    if p["kind"] == "gap":
+        reason = p.get("reason")
+        if not (isinstance(reason, str) and reason.strip()):
+            return None, 'a gap needs a string "reason"'
+        p = {**p, "reason": " ".join(reason.split())[:80], "files": []}   # a gap changes nothing
     files = p.get("files")
     if not isinstance(files, list):
         return None, "files must be a list"
@@ -91,29 +105,50 @@ def parse_proposal(raw):
     return p, None
 
 
+def test_script(pkg):
+    scripts = pkg.get("scripts")
+    return scripts.get("test") if isinstance(scripts, dict) else None
+
+
 def proposal_problem(box, proposal):
-    """(malformed, code_reason). `malformed` is why the proposal cannot be applied at all (a
-    lockfile with written content, invalid package.json). `code_reason` is why it is a code change
-    although it may be labelled config (a file outside CONFIG_NAMES, a non-config package.json
-    key). Each is None when it does not apply."""
-    code = None
+    """(malformed, weakens, code_reason). `malformed` is why the proposal cannot be applied at all
+    (a lockfile with written content, invalid package.json). `weakens` is why it skips or weakens
+    tests (a foundry.toml test filter, a deleted test file, a changed package.json test script).
+    `code_reason` is why it is a code change although it may be labelled config (a file outside
+    CONFIG_NAMES, a non-config package.json key). Each is None when it does not apply."""
+    code = weak = None
+    # a rename is a deletion plus a written test file; more deletions than that drop tests
+    tests = [f for f in proposal["files"] if TEST_FILE.search(f["path"])]
+    gone = [f["path"] for f in tests if f["content"] == ""]
+    if len(gone) > len(tests) - len(gone):
+        weak = f"{gone[0]}: deletes a test file"
     for f in proposal["files"]:
         name = f["path"].rsplit("/", 1)[-1]
         if name in LOCKFILE_NAMES:
             if f["content"] != "":
-                return f"{f['path']}: a lockfile can only be regenerated (content \"\")", None
+                return f"{f['path']}: a lockfile can only be regenerated (content \"\")", None, None
         elif name == "package.json":
             old = box.read(f["path"])
             try:
                 old, new = json.loads(old or "{}"), json.loads(f["content"])
             except ValueError:
-                return f"{f['path']}: not valid JSON", None
+                return f"{f['path']}: not valid JSON", None, None
+            if not isinstance(old, dict) or not isinstance(new, dict):
+                return f"{f['path']}: must be a JSON object", None, None
             changed = {k for k in old.keys() | new.keys() if old.get(k) != new.get(k)}
             if changed - PACKAGE_JSON_KEYS and not code:
                 code = f"{f['path']}: changes {sorted(changed - PACKAGE_JSON_KEYS)}, which is not config"
-        elif name not in CONFIG_NAMES and not code:
-            code = f"{f['path']}: not a config file"
-    return None, code
+            if test_script(old) != test_script(new):
+                weak = weak or f"{f['path']}: changes the test script"
+        else:
+            if name == "foundry.toml":
+                added = set(FOUNDRY_FILTER.findall(f["content"])) - set(FOUNDRY_FILTER.findall(
+                    box.read(f["path"]) or ""))
+                if added:
+                    weak = weak or f"{f['path']}: adds or changes test filter {sorted(added)[0][0]}"
+            if name not in CONFIG_NAMES and not code:
+                code = f"{f['path']}: not a config file"
+    return None, weak, code
 
 
 def build_prompt(box, failure, attempts):
@@ -179,7 +214,9 @@ def build_graph(box, model, deadline):
         return out
 
     def rules(state):
-        fired, fixes = apply_rules(box.rule_files())
+        failure = state.get("failure") or {}
+        install_out = box.last_out if failure.get("step") == "install" else ""
+        fired, fixes = apply_rules(box.rule_files(), install_out)
         attempts = list(state.get("attempts", []))
         if fixes:
             paths = box.write({box.rel(n): c for n, c in fixes.items()})
@@ -208,38 +245,76 @@ def build_graph(box, model, deadline):
             return failed_model(e)
         return {"system": SYSTEM, "user": user, "raw": raw, "reasked": False}
 
-    def propose(state, config: RunnableConfig):
-        proposal, err = parse_proposal(state["raw"])
+    def judge(raw, failure):
+        """(proposal, error, weakens): the proposal when it can go on, else why not. `weakens`
+        is True when the error is a rejection for skipping or weakening tests."""
+        proposal, err = parse_proposal(raw)
         if err:
-            msgs = [SystemMessage(state["system"]), HumanMessage(state["user"]),
-                    AIMessage(state["raw"][:4000]),
-                    HumanMessage(f"That reply was rejected: {err}. "
-                                 "Reply again with only the JSON object.")]
-            try:
-                raw = ask(msgs, config)
-            except (ModelLimited, ModelUnavailable) as e:
-                return failed_model(e)
-            proposal, err = parse_proposal(raw)
-            if err:
-                return {"status": "invalid_proposal", "detail": err, "raw": raw}
-            return {"proposal": {**proposal, "recovered_from_invalid_json": True}, "raw": raw}
-        return {"proposal": proposal}
+            return None, err, False
+        if proposal["kind"] == "gap":
+            step = (failure or {}).get("step")
+            if step not in GAP_STEPS:
+                return proposal, ("a gap is only accepted when install and build passed and the "
+                                  f"failing step is test or serve, not {step}"), False
+            return proposal, None, False
+        if not proposal["files"]:
+            return proposal, None, False       # apply() ends the run: nothing to apply
+        malformed, weak, code = proposal_problem(box, proposal)
+        if malformed:
+            return proposal, malformed, False
+        if weak:
+            return proposal, f"this skips or weakens tests: {weak}", True
+        return {**proposal, "code_reason": code}, None, False
+
+    def propose(state, config: RunnableConfig):
+        failure = state.get("failure")
+        proposal, err, weak = judge(state["raw"], failure)
+        if not err:
+            return accept(state, proposal)
+        msgs = [SystemMessage(state["system"]), HumanMessage(state["user"]),
+                AIMessage(state["raw"][:4000]),
+                HumanMessage(f"That reply was rejected: {err}. "
+                             "Reply again with only the JSON object.")]
+        try:
+            raw = ask(msgs, config)
+        except (ModelLimited, ModelUnavailable) as e:
+            return failed_model(e)
+        proposal, err, weak = judge(raw, failure)
+        if not err:
+            return {**accept(state, {**proposal, "reasked": True}), "raw": raw}
+        out = {"status": "broken" if weak else "invalid_proposal", "detail": err, "raw": raw}
+        if proposal:     # keep what was rejected in the record
+            out["attempts"] = list(state.get("attempts", [])) + [{
+                "source": "model", "kind": proposal["kind"],
+                "files": [f["path"] for f in proposal["files"]], "rationale": proposal["rationale"],
+                "confidence": proposal["confidence"], "status": "rejected", "result": err,
+                "files_content": proposal["files"]}]
+        return out
+
+    def accept(state, proposal):
+        """A gap ends the run here (see Box.accept_gap); anything else goes on to apply."""
+        if proposal["kind"] != "gap":
+            return {"proposal": proposal}
+        step = state["failure"]["step"]
+        box.accept_gap = (step, proposal["reason"])
+        box.gaps.append(f"needs {proposal['reason']} ({step} step)")
+        entry = {"source": "model", "kind": "gap", "files": [], "rationale": proposal["rationale"],
+                 "confidence": proposal["confidence"], "status": "accepted",
+                 "result": proposal["reason"]}
+        return {"status": "passed", "detail": box.gaps[-1],
+                "attempts": list(state.get("attempts", [])) + [entry]}
 
     def apply(state):
         p = state["proposal"]
         attempts = list(state.get("attempts", []))
         entry = {"source": "model", "kind": p["kind"], "files": [f["path"] for f in p["files"]],
                  "rationale": p["rationale"], "confidence": p["confidence"], "result": None,
-                 "recovered_from_invalid_json": p.get("recovered_from_invalid_json", False)}
-        code = None
-        if p["files"]:
-            problem, code = proposal_problem(box, p)
-        else:
+                 "recovered_from_invalid_json": p.get("reasked", False)}
+        code = p.get("code_reason")
+        if not p["files"]:
             problem = "proposal has no files"
-        if problem:
             entry.update(status="needs_approval", result=problem, files_content=p["files"])
-            status = "needs_approval" if p["files"] else "fail"
-            return {"attempts": attempts + [entry], "status": status, "detail": problem}
+            return {"attempts": attempts + [entry], "status": "fail", "detail": problem}
         if p["kind"] == "code" or code:
             # a code change is applied here only to verify it; the owner approves it later
             entry.update(kind="code", needs_approval=True,

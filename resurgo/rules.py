@@ -166,15 +166,41 @@ def _dump_package_json(text, pkg):
     return json.dumps(pkg, indent=indent, ensure_ascii=False) + ("\n" if text.endswith("\n") else "")
 
 
-def apply_rules(files):
+# install output of a native module that failed to build (node-gyp, prebuild-install, C++ errors)
+NATIVE_BUILD = re.compile(r"gyp ERR!|prebuild-install (?:ERR!|warn install[^\n]*(?:fail|error))|"
+                          r"node-gyp[^\n]*\bfail|\.(?:cc|cpp|cxx|hpp):\d+:\d+: (?:fatal )?error",
+                          re.I)
+NATIVE_FALLBACK_NODE = 22   # better-sqlite3 9.6.0 built on 22 and not on 24
+
+
+def declares_node(files):
+    """True when the repo names a Node version anywhere the baseline might look."""
+    try:
+        pkg = json.loads(files.get("package.json") or "{}")
+    except ValueError:
+        pkg = {}
+    pkg = pkg if isinstance(pkg, dict) else {}
+    engines, volta = pkg.get("engines"), pkg.get("volta")
+    return bool((isinstance(engines, dict) and engines.get("node"))
+                or (isinstance(volta, dict) and volta.get("node"))
+                or (files.get(".nvmrc") or "").strip() or (files.get(".node-version") or "").strip())
+
+
+def apply_rules(files, install_output=""):
     """Return (fired, fixes). `fired` lists each rule that changes the toolchain, with its
-    source and value; `fixes` maps path -> new file content."""
+    source and value; `fixes` maps path -> new file content. `install_output` is the output of
+    a failed install, or "" when another step failed."""
     fired, fixes = [], {}
     major, source = node_major(files)
     current = parse_major(files.get(".nvmrc")) or BASELINE_NODE
     if major and major != current:
         fired.append({"rule": "node-major", "source": source, "value": str(major)})
         fixes[".nvmrc"] = f"{major}\n"
+    if install_output and NATIVE_BUILD.search(install_output) and not declares_node(files):
+        fired.append({"rule": "native-module", "source": "native build failed on the baseline "
+                      f"Node {BASELINE_NODE} and the repo declares no Node version",
+                      "value": str(NATIVE_FALLBACK_NODE)})
+        fixes[".nvmrc"] = f"{NATIVE_FALLBACK_NODE}\n"
     pm = package_manager(files)
     pkg_text = files.get("package.json")
     if pm and pkg_text and pm[2] != "packageManager field":

@@ -147,6 +147,8 @@ class Box:
         self.env_example = ""
         self.gaps = []            # reasons a passing run still has gaps
         self.proof = {}           # how the serve step passed: "http" (GET /) or "service" (alive)
+        self.accept_gap = None    # (step, reason) the model named as an external need; that step
+                                  # failing then counts as a gap, here and in the verifier
 
     @property
     def proj(self):
@@ -405,6 +407,9 @@ class Box:
         if secret:
             self.gaps.append(f"needs {secret} ({name} step)")
             return None
+        if self.accept_gap and name == self.accept_gap[0]:
+            self.gaps.append(f"needs {self.accept_gap[1]} ({name} step)")
+            return None
         return {"step": name, "command": rec["command"], "exit_code": rec["exit_code"]}
 
     def pipeline(self):
@@ -540,6 +545,7 @@ def execute(repo, sha, subdir, root, tags):
             result = status
         elif status == "passed":
             vbox = open_box("verifier", run_id, repo, sha, subdir, created, patch)
+            vbox.accept_gap = box.accept_gap
             failure = vbox.pipeline() if vbox.cloned else {"step": "clone"}
             ok = failure is None
             record["verifier"] = {"passed": ok, "steps": vbox.steps, "gaps": vbox.gaps,

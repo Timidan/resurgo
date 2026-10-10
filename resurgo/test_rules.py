@@ -21,6 +21,17 @@ def test_rules():
     assert apply_rules({".nvmrc": "20\n"}) == ([], {})
 
 
+def test_native_module_rule():
+    out = "npm error gyp ERR! build error\nnpm error gyp ERR! not ok\n"
+    pkg = {"package.json": '{"name": "x"}'}
+    fired, fixes = apply_rules(pkg, out)
+    assert [r["rule"] for r in fired] == ["native-module"] and fixes[".nvmrc"] == "22\n"
+    assert apply_rules({"package.json": '{"engines": {"node": "^24"}}'}, out)[1] == {}
+    assert apply_rules({**pkg, ".nvmrc": "24\n"}, out)[1] == {}
+    assert apply_rules(pkg, "npm error code ERESOLVE")[1] == {}
+
+
 if __name__ == "__main__":
     test_rules()
+    test_native_module_rule()
     print("ok")
