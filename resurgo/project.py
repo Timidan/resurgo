@@ -6,6 +6,8 @@ workspace member's package.json to its text.
 """
 import json
 import re
+import shlex
+import tomllib
 
 WEB_DEPS = {"next", "nuxt", "vite", "express", "fastify", "koa", "hono", "@nestjs/core",
             "react-scripts", "@remix-run/dev", "@remix-run/node", "astro", "@sveltejs/kit",
@@ -74,15 +76,40 @@ def family(ptype):
     return ptype if ptype in ("foundry", "rust") else "node"
 
 
+def rust_pin(files):
+    """(channel, components, targets) from rust-toolchain.toml or the legacy rust-toolchain file."""
+    text = files.get("rust-toolchain.toml") or files.get("rust-toolchain") or ""
+    try:
+        tc = tomllib.loads(text).get("toolchain") or {}
+    except ValueError:      # the legacy file is a bare channel name
+        m = re.match(r"\s*([^\s#\[]+)", text)
+        return (m.group(1) if m else ""), [], []
+    names = lambda key: [x for x in tc.get(key) or [] if isinstance(x, str)]
+    channel = tc.get("channel")
+    return (channel if isinstance(channel, str) else ""), names("components"), names("targets")
+
+
 def rust_version(files):
     """Image version tag: the pinned toolchain if rust-toolchain(.toml) names a release, else
     the latest stable (`1`). Returns (tag, why)."""
-    text = files.get("rust-toolchain.toml") or files.get("rust-toolchain") or ""
-    m = re.search(r'channel\s*=\s*"([^"]+)"', text) or re.match(r"\s*([^\s#\[]+)", text)
-    channel = m.group(1) if m else ""
+    channel = rust_pin(files)[0]
     if re.fullmatch(r"\d+\.\d+(\.\d+)?", channel):
         return channel, f"rust-toolchain pins {channel}"
     return "1", f"stable ({channel or 'no rust-toolchain file'})"
+
+
+def rustup_install(files):
+    """Root command that installs the pinned channel with its components and targets into the
+    image's rustup home (readable by the non-root user), or "" when the image's toolchain is
+    already what the repo asks for. The names come from the repo, so they are quoted."""
+    channel, components, targets = rust_pin(files)
+    if not channel or (channel == "stable" and not components and not targets):
+        return ""
+    args = [shlex.quote(channel)]
+    args += [f"-c {shlex.quote(c)}" for c in components] + [f"-t {shlex.quote(t)}" for t in targets]
+    return ("export HOME=/tmp/root-home CARGO_HOME=/tmp/root-home/.cargo && mkdir -p $HOME && "
+            f"rustup toolchain install --profile minimal --no-self-update {' '.join(args)} && "
+            'chmod -R a+rX "$RUSTUP_HOME"')
 
 
 def _dummy(name):

@@ -1,7 +1,8 @@
 """Clone a repo at a SHA in a fresh container, repair install/build failures with the agent
 loop, then prove the fix in a second fresh container.
 
-Usage: uv run python -m resurgo.run <owner/repo> <sha> [--path <subdir>]
+Usage: uv run python -m resurgo.run <owner/repo> <sha> [--path <subdir>] [--agent-version V]
+       [--set NAME] [--sweep-id ID]
 """
 import argparse
 import contextlib
@@ -21,7 +22,7 @@ from resurgo import __version__
 from resurgo.agent import build_graph
 from resurgo.gateway import GatewayChat
 from resurgo.project import (BUILD_NODE_OPTIONS, CAP_MINUTES, FOUNDRY_RELEASE, MANIFESTS, detect_type, dummy_env, family,
-                             has_real_test, needs_secret, rust_version, scripts)
+                             has_real_test, needs_secret, rust_version, rustup_install, scripts)
 from resurgo.rules import BASELINE_NODE, LOCKFILES, RULE_FILES, node_major, parse_major
 
 BASE_IMAGE = f"node:{BASELINE_NODE}-bookworm"   # clones and classifies; replaced if the type needs another
@@ -39,7 +40,7 @@ INSTALL = {"pnpm": ("pnpm install --frozen-lockfile", "pnpm install --no-frozen-
 ENV_PREFIX = ('export PATH="$HOME/.pm/node_modules/.bin:$HOME/.node/node_modules/.bin:'
               '$HOME/.local/bin:$HOME/.foundry/bin:/usr/local/cargo/bin:$PATH" '
               'COREPACK_ENABLE_DOWNLOAD_PROMPT=0 CARGO_HOME=$HOME/.cargo; ')
-# rust-toolchain pins and `stable` both resolve to the toolchain baked into the rust image
+# a rust-toolchain pin is installed by the toolchain-pin step (as root) into the image's rustup
 
 
 def detect_pm(files):
@@ -74,10 +75,10 @@ def exec_raw(container, cmd, data=None, timeout=120, home=NODE_HOME):
     return p.returncode, p.stdout, scrub(p.stderr)
 
 
-def step(name, container, cmd, timeout, home=NODE_HOME):
+def step(name, container, cmd, timeout, home=NODE_HOME, user="1000:1000"):
     t0, w0 = time.time(), time.monotonic()
     try:
-        code, out = docker("exec", "-u", "1000:1000", "-e", f"HOME={home}", "-w", home, container,
+        code, out = docker("exec", "-u", user, "-e", f"HOME={home}", "-w", home, container,
                            "bash", "-c", ENV_PREFIX + cmd, timeout=timeout)
     except subprocess.TimeoutExpired as e:
         partial = "".join(x.decode(errors="replace") if isinstance(x, bytes) else x or ""
@@ -152,12 +153,12 @@ class Box:
     def raw(self, cmd, data=None, timeout=120):
         return exec_raw(self.container, cmd, data, timeout, self.home)
 
-    def sh(self, name, cmd):
+    def sh(self, name, cmd, user="1000:1000"):
         timeout = self.cap_s
         if self.deadline:
             timeout = int(max(30, min(timeout, self.deadline - time.monotonic())))
         with tool_span(f"{self.role}.{name}") as sp:
-            rec, out = step(name, self.container, cmd, timeout, self.home)
+            rec, out = step(name, self.container, cmd, timeout, self.home, user)
             self.steps.append(rec)
             tail = "\n".join(rec["output_tail"])
             sp.set_attribute("neatlogs.tool.name", f"{self.role}.{name}")
@@ -269,7 +270,7 @@ class Box:
         by default) and an npm pin, with pnpm and yarn from corepack; plus a pinned Foundry
         release (and submodules) when the repo has a foundry.toml."""
         if family(self.ptype) == "rust":
-            return "rustc --version && cargo --version"
+            return f"cd {self.proj} && rustc --version && cargo --version"
         major = parse_major(files.get(".nvmrc")) or self.image_major
         cmd = "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin"
         cmd += (f" && npm install --prefix $HOME/.node node@{major}" if major != self.image_major
@@ -374,6 +375,9 @@ class Box:
         passed or a secret gap ended the run (see self.gaps), else {step, command, exit_code}."""
         self.gaps, self.proof = [], {}
         files = self.rule_files()
+        pin = rustup_install(files) if family(self.ptype) == "rust" else ""
+        if pin and not self.sh("toolchain-pin", pin, user="0:0"):   # root, before the user steps
+            return self.failed("toolchain")
         if not self.sh("toolchain", self.toolchain_cmd(files)):
             return self.failed("toolchain")
         lines = [l for l in self.last_out.strip().splitlines() if l.strip()]
@@ -450,15 +454,18 @@ def run_agent(box):
     return state
 
 
-def execute(repo, sha, subdir, root):
+def execute(repo, sha, subdir, root, tags):
     started = time.time()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + sha[:7]
     record = {"run_id": run_id, "repo": repo, "sha": sha, "path": subdir,
               "agent_version": __version__, "started": started,
               "agent": {"steps": []}, "verifier": {"steps": []}}
+    record.update({k: v for k, v in tags.items() if v})   # agent_version, set, sweep_id
     root.set_attribute("repo", repo)
     root.set_attribute("sha", sha)
-    root.set_attribute("agent_version", __version__)
+    for key in ("agent_version", "set", "sweep_id"):
+        if record.get(key):
+            root.set_attribute(key, record[key])
     out = Path("runs") / run_id
     out.mkdir(parents=True, exist_ok=True)
     created, result = [], "broken"
@@ -520,13 +527,13 @@ def execute(repo, sha, subdir, root):
     return 0 if result in ("runs", "runs_with_gaps") else 1
 
 
-def main(repo, sha, subdir=""):
+def main(repo, sha, subdir="", tags=None):
     global TRACING
     load_dotenv()
     TRACING = init_tracing()
     try:
         with tool_span_root() as root:
-            return execute(repo, sha, subdir.strip("/"), root)
+            return execute(repo, sha, subdir.strip("/"), root, tags or {})
     finally:
         if TRACING:
             try:
@@ -541,5 +548,10 @@ if __name__ == "__main__":
     ap.add_argument("repo", help="owner/repo")
     ap.add_argument("sha")
     ap.add_argument("--path", default="", help="project subdirectory inside the repo")
+    ap.add_argument("--agent-version", help="tag the run (default: the package version)")
+    ap.add_argument("--set", dest="set_name", help="evaluation set tag, e.g. dev or heldout")
+    ap.add_argument("--sweep-id", help="sweep tag, set by resurgo.sweep")
     args = ap.parse_args()
-    sys.exit(main(args.repo, args.sha, args.path))
+    sys.exit(main(args.repo, args.sha, args.path,
+                  {"agent_version": args.agent_version, "set": args.set_name,
+                   "sweep_id": args.sweep_id}))

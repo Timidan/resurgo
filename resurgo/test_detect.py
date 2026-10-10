@@ -1,6 +1,6 @@
 import json
 
-from resurgo.project import detect_type, dummy_env, needs_secret
+from resurgo.project import detect_type, dummy_env, needs_secret, rustup_install
 from resurgo.run import detect_pm
 
 
@@ -30,6 +30,9 @@ def test_detect_type():
     env = dummy_env("API_KEY=\nSITE_URL=your-url\nPORT=8080 # port\n")
     assert env == "API_KEY=dummy-secret-value\nSITE_URL=http://localhost:3000\nPORT=8080\n"
     assert needs_secret("Error: API_KEY is not set", "API_KEY=\nPORT=1\n") == "API_KEY"
+    assert rustup_install({"rust-toolchain": "stable\n"}) == ""
+    pin = rustup_install({"rust-toolchain.toml": '[toolchain]\nchannel = "1.75.0"\ncomponents = ["a b"]'})
+    assert "install --profile minimal --no-self-update 1.75.0 -c 'a b' &&" in pin
 
 
 if __name__ == "__main__":
