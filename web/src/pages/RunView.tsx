@@ -108,7 +108,7 @@ function RunBody({ d }: { d: RunDetail }) {
   const patch = useMemo(() => (fix_patch ? parsePatch(fix_patch) : []), [fix_patch]);
   const meta = statusMeta(s.status);
 
-  const [view, setView] = useState<"run" | "diff">("run");
+  const [view, setView] = useState<"run" | "diff">(() => (window.location.hash === "#fix" ? "diff" : "run"));
   const [rows, setRows] = useState<TermRow[] | null>(null); // null = show the recorded view
   const [state, setState] = useState<ActionState>("idle");
   const [thinking, setThinking] = useState(false);
@@ -229,6 +229,17 @@ function RunBody({ d }: { d: RunDetail }) {
           {awaiting && (
             <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
               The fix passed in a separate clean container. It changes code, so it waits for the owner&apos;s approval.
+              Review the patch in the fix diff. Approving it from Resurgo isn&apos;t built yet.{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setView("diff");
+                  document.getElementById("terminal-h")?.scrollIntoView({ block: "start" });
+                }}
+                className="font-semibold text-foreground underline underline-offset-4 hover:text-accent-strong"
+              >
+                Open the fix diff
+              </button>
             </p>
           )}
           {skipped && (
@@ -381,7 +392,7 @@ function RunBody({ d }: { d: RunDetail }) {
           </h2>
           <p className="mb-4 text-muted-foreground">
             {awaiting
-              ? "Applied only inside the sandbox to test it. It passed in a clean container and waits for your approval before anything reaches your repository."
+              ? "Applied only inside the sandbox to test it. It passed in a clean container and waits for your approval before anything reaches your repository. Approving it from Resurgo isn't built yet."
               : "Source-code changes are proposed, never applied on their own. These were not applied in this run."}
           </p>
           <div className="space-y-4">

@@ -32,6 +32,14 @@ function RepoRow({ r, i }: { r: InstallRepo; i: number }) {
           Pull request{r.pr.number != null ? ` #${r.pr.number}` : ""}
         </a>
       )}
+      {status === "fix_awaiting_approval" && r.run_id && (
+        <p className="basis-full text-sm text-muted-foreground">
+          Review the patch in the run record. Approving it from Resurgo isn&apos;t built yet.{" "}
+          <Link to={`/runs/${r.run_id}#fix`} className="font-semibold underline underline-offset-4 hover:text-accent-strong">
+            Open the fix
+          </Link>
+        </p>
+      )}
       {r.state === "skipped" && r.reason && <p className="basis-full text-sm text-muted-foreground">{r.reason}</p>}
     </li>
   );
