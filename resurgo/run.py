@@ -270,6 +270,31 @@ class Box:
                              f"git diff --no-color --no-ext-diff -- {paths}")
         return out
 
+    def prune(self, attempts):
+        """After a pass with several applied attempts: revert the files only the attempts that did
+        not pass touched, re-run once, and keep the smaller patch only if it passes. Returns
+        {"files": [...], "kept": bool}, or None when there is nothing to prune."""
+        applied = [a for a in attempts if a.get("status") == "applied"]
+        if len(applied) < 2 or (self.deadline and time.monotonic() > self.deadline):
+            return None
+        keep = set(applied[-1]["files"])
+        stale = list(dict.fromkeys(p for a in applied[:-1] for p in a["files"] if p not in keep))
+        if not stale:
+            return None
+        before = self.read_many(stale)           # a path missing here was removed by the agent
+        state = (self.frozen, self.gaps, self.proof)
+        for path in stale:                       # tracked files back from git, new files deleted
+            q = shlex.quote(path)
+            self.raw(f"cd repo && (git checkout -q -- {q} 2>/dev/null || rm -f {q})")
+        self.frozen = True                       # the verifier starts from the original lockfile
+        kept = self.pipeline() is None
+        if not kept:
+            self.frozen, self.gaps, self.proof = state
+            self.write(before)
+            self.remove([p for p in stale if p not in before])
+            self.frozen = state[0]
+        return {"files": stale, "kept": kept}
+
     def toolchain_cmd(self, files):
         """Rust: the image's toolchain as it is. Otherwise the Node major from .nvmrc (the image's
         by default) and an npm pin, with pnpm and yarn from corepack; plus a pinned Foundry
@@ -496,6 +521,7 @@ def execute(repo, sha, subdir, root, tags):
         else:
             state = run_agent(box)
         status = state.get("status")
+        pruned = box.prune(state.get("attempts", [])) if status == "passed" else None
         patch = box.diff() if status == "passed" or box.touched else ""
         if patch:
             (out / "fix.patch").write_text(patch)
@@ -503,10 +529,12 @@ def execute(repo, sha, subdir, root, tags):
                            "detail": scrub(state.get("detail", "")), "package_manager": box.pm,
                            "rules_fired": state.get("rules_fired", []),
                            "attempts": state.get("attempts", []), "steps": box.steps,
-                           "gaps": box.gaps, "proof": box.proof}
+                           "gaps": box.gaps, "proof": box.proof, "pruned": pruned}
         record["model_calls"] = state.get("model_calls", [])
+        gone = set(pruned["files"]) if pruned and pruned["kept"] else set()
         record["needs_approval"] = (status == "needs_approval" or
-                                    any(a.get("needs_approval") for a in record["agent"]["attempts"]))
+                                    any(a.get("needs_approval") and set(a["files"]) - gone
+                                        for a in record["agent"]["attempts"]))
         record["last_failure"] = state.get("failure") or None
         if status in ("model_limited", "unsupported"):
             result = status
