@@ -212,7 +212,7 @@ export function SolutionTabs({ detail, onBeamDone }: { detail: RunDetail; onBeam
   return (
     <div
       ref={box}
-      className="mt-12 grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]"
+      className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]"
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
       onFocus={() => setHeld(true)}
@@ -229,10 +229,10 @@ export function SolutionTabs({ detail, onBeamDone }: { detail: RunDetail; onBeam
           if (byUser) setManual(true);
           setTab(id);
         }}
-        className="flex gap-2 overflow-x-auto pt-5 lg:flex-col lg:overflow-visible lg:pl-5 lg:pt-0"
+        className="flex snap-x snap-mandatory gap-2 overflow-x-auto pt-5 lg:snap-none lg:flex-col lg:overflow-visible lg:pl-5 lg:pt-0"
         tabClassName={(sel) =>
           cn(
-            "chip-t relative flex min-w-40 items-start gap-3 rounded-lg border px-4 py-3 text-left",
+            "chip-t relative flex min-w-40 snap-start items-start gap-3 rounded-lg border px-4 py-3 text-left",
             sel ? "border-accent-strong bg-panel" : "border-transparent text-muted-foreground hover:bg-panel",
           )
         }

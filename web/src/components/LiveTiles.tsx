@@ -42,7 +42,7 @@ export function LiveTiles({ runs }: { runs: RunSummary[] }) {
           </p>
           <p className="text-xs text-muted-foreground">Each tile shows the repository&apos;s latest recorded run.</p>
         </div>
-        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
+        <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
           {shown.map((r, i) => {
             const m = statusMeta(r.status);
             const on = i === spot;

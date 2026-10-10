@@ -5,6 +5,7 @@ import { Story } from "@/components/Story";
 import { useRun, type RunSummary } from "@/lib/api";
 import { statusMeta } from "@/lib/run";
 import { readingMs, useStream } from "@/lib/stream";
+import { INSTALL_URL } from "@/lib/utils";
 
 /** owner/name from "owner/name", a github.com URL, or a git remote. Null when it isn't one. */
 export function parseRepo(input: string): string | null {
@@ -17,7 +18,7 @@ export function parseRepo(input: string): string | null {
   return `${owner}/${name}`;
 }
 
-const NO_LIVE = "Install the Resurgo Agent GitHub App on a repository to have it checked.";
+const NOT_CHECKED = "Not checked yet. Install the app on it to check it.";
 
 type Asked = { nonce: number; text: string; repo: string | null; match: RunSummary | null };
 
@@ -26,8 +27,8 @@ function Reply({ asked, latest, onPick }: { asked: Asked; latest: RunSummary[]; 
   const intro = match
     ? `Found ${match.repo} in the gallery. Its latest recorded run, at ${match.sha}: ${statusMeta(match.status).word}. Replaying that run.`
     : asked.repo
-      ? `${NO_LIVE} ${asked.repo} has no recorded run yet, so there is nothing to replay.`
-      : `That doesn't look like a public GitHub repo. Paste owner/name or a github.com link. ${NO_LIVE}`;
+      ? `${asked.repo} has no recorded run in the gallery. ${NOT_CHECKED}`
+      : "That doesn't look like a public GitHub repo. Enter owner/name or a github.com link.";
   const reduce = useReducedMotion();
   // Anticipation: a spinner for a beat, then the reply streams.
   const { shown, done, started } = useStream(intro, { restartKey: asked.nonce, delay: 450 });
@@ -66,6 +67,11 @@ function Reply({ asked, latest, onPick }: { asked: Asked; latest: RunSummary[]; 
           </ul>
         </div>
       )}
+      {!match && asked.repo && done && (
+        <p className="settle text-sm">
+          <a href={INSTALL_URL} className="font-semibold text-accent-strong underline underline-offset-4">Install Resurgo Agent on GitHub</a>
+        </p>
+      )}
       {match && done && read && (
         <p className="settle text-sm">
           <Link to={`/runs/${match.id}`} className="text-accent-strong underline underline-offset-4">Open the run</Link>
@@ -95,15 +101,15 @@ export function RepoChat({ latest }: { latest: RunSummary[] }) {
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6" aria-labelledby="chat-h">
       <div className="mx-auto max-w-3xl">
-        <h2 id="chat-h" className="text-3xl font-semibold tracking-tight sm:text-4xl">Try a repository</h2>
+        <h2 id="chat-h" className="text-3xl font-semibold tracking-tight sm:text-4xl">Find a repository in the gallery</h2>
         <form onSubmit={submit} className="mt-6">
-          <label htmlFor={inputId} className="block text-sm font-semibold">Paste a public GitHub repo</label>
+          <label htmlFor={inputId} className="block text-sm font-semibold">Public GitHub repository</label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
               id={inputId}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="owner/name or https://github.com/owner/name"
+              placeholder="owner/name"
               autoComplete="off"
               spellCheck={false}
               className="min-h-12 min-w-0 flex-1 rounded-lg border border-control bg-panel px-4 font-mono text-base text-ink placeholder:text-secondary sm:text-sm"
@@ -113,7 +119,7 @@ export function RepoChat({ latest }: { latest: RunSummary[] }) {
               disabled={!value.trim()}
               className="press min-h-12 rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Check
+              Find
             </button>
           </div>
         </form>

@@ -47,7 +47,7 @@ function CommandChip({ command }: { command: string }) {
             setTimeout(() => setCopied(false), 1800);
           }).catch(() => undefined);
         }}
-        className="press shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        className="press shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted pointer-coarse:min-h-11 pointer-coarse:px-4"
       >
         <span aria-live="polite">
           <span key={String(copied)} className="settle inline-block">{copied ? "✓ Copied" : "Copy"}</span>
@@ -88,13 +88,21 @@ function Hero({ data }: { data: LandingData }) {
           </Link>
         </div>
         <p className="mt-4 max-w-xl text-sm text-muted-foreground">
-          Pick the repos. Resurgo rebuilds each from a fresh clone and opens a pull request only for a fix that passes in a clean container.{" "}
+          Public repos only · Pull requests only for fixes that pass a clean container ·{" "}
           <Link to="/data" className="underline underline-offset-4 hover:text-foreground">What Resurgo stores</Link>
         </p>
         {cmd && (
           <div className="mt-8 max-w-xl">
             <p className="mb-2 text-sm text-muted-foreground">or run it yourself:</p>
             <CommandChip command={cmd} />
+            <p className="mt-2 text-sm">
+              <a
+                href="https://github.com/Timidan/resurgo#run-it-yourself"
+                className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                What you need to run it
+              </a>
+            </p>
           </div>
         )}
         <section className="mt-12" aria-label="Built with">

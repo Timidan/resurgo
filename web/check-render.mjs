@@ -1,7 +1,7 @@
 // Loads the built site in headless Chromium. Exits non-zero if a page renders blank, scrolls
 // sideways, shows an inner horizontal scrollbar on step output, or (landing) the "Works with" and
 // "Built with" rows do not render named logos at their sizes.
-// Usage: node web/check-render.mjs [baseUrl] [runId] [screenshotDir]
+// Usage: node web/check-render.mjs [baseUrl] [runId] [screenshotDir] [installationId]
 // Needs the API (which also serves web/dist) already running and `chromium` on PATH.
 import { spawn, spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -13,9 +13,11 @@ const runId = process.argv[3] ?? "20261010T101804Z-5c3370f";
 const outDir = process.argv[4] ?? join(tmpdir(), "resurgo-shots");
 mkdirSync(outDir, { recursive: true });
 
-const pages = [["landing", "/"], ["runs", "/runs"], ["run", `/runs/${runId}`]];
+const installId = process.argv[5];
+const pages = [["landing", "/"], ["runs", "/runs"], ["run", `/runs/${runId}`], ["data", "/data"]];
+if (installId) pages.push(["installed", `/installed/${installId}`]);
 const INSTALL_URL = "https://github.com/apps/resurgo-agent/installations/new";
-const widths = [420, 1280];
+const widths = [360, 420, 1280];
 const themes = ["light", "dark"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

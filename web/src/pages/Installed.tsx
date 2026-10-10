@@ -1,6 +1,8 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Eyebrow, StatusBadge } from "@/components/ui-bits";
-import { useInstallation, type InstallRepo } from "@/lib/api";
+import { useInstallation, useRuns, type InstallRepo } from "@/lib/api";
+import { fmtWhen } from "@/lib/run";
+import { INSTALL_URL } from "@/lib/utils";
 
 /** The gallery's status for a repo row, or null while it has no result. A passed code fix waits for approval. */
 function badgeStatus(r: InstallRepo): string | null {
@@ -11,16 +13,31 @@ function badgeStatus(r: InstallRepo): string | null {
 
 const STATE_WORD: Record<string, string> = { queued: "Queued", checking: "Checking", done: "Done", skipped: "Skipped" };
 
-function RepoRow({ r, i }: { r: InstallRepo; i: number }) {
+/** "started 4 min ago", or "" when the worker's time can't be read. */
+function startedAgo(iso: string | null | undefined): string {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (Number.isNaN(t)) return "";
+  const min = Math.max(0, Math.floor((Date.now() - t) / 60000));
+  if (min < 1) return "started under a minute ago";
+  return min < 120 ? `started ${min} min ago` : `started ${Math.floor(min / 60)} h ago`;
+}
+
+function RepoRow({ r, i, configFix }: { r: InstallRepo; i: number; configFix: boolean }) {
   const status = badgeStatus(r);
+  const since = r.state === "checking" ? startedAgo(r.started) : "";
+  // A verified config fix needs no approval; with no pull request recorded, say so in the slot where the link goes.
+  const noPr = configFix && !r.pr?.url && (r.result === "runs" || r.result === "runs_with_gaps") && !r.needs_approval;
   return (
     <li className="settle flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3" style={{ "--i": i } as React.CSSProperties}>
-      <span className="min-w-0 flex-1 break-words font-semibold">
+      <span className="min-w-[min(100%,12rem)] flex-1 break-words font-semibold">
         {r.repo}
         {r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
         {r.sha ? <span className="ml-2 font-mono text-sm font-normal text-muted-foreground">{r.sha}</span> : null}
       </span>
-      <span className="font-mono text-sm text-muted-foreground">{STATE_WORD[r.state] ?? r.state}</span>
+      <span className="font-mono text-sm text-muted-foreground">
+        {STATE_WORD[r.state] ?? r.state}
+        {since ? ` · ${since}` : ""}
+      </span>
       {status && <StatusBadge status={status} />}
       {r.run_id && (
         <Link to={`/runs/${r.run_id}`} className="text-sm font-semibold underline underline-offset-4 hover:text-accent-strong">
@@ -32,6 +49,15 @@ function RepoRow({ r, i }: { r: InstallRepo; i: number }) {
           Pull request{r.pr.number != null ? ` #${r.pr.number}` : ""}
         </a>
       )}
+      {noPr && <span className="text-sm text-muted-foreground">Pull request not opened yet</span>}
+      {status === "fix_awaiting_approval" && r.run_id && (
+        <p className="basis-full text-sm text-muted-foreground">
+          Review the patch in the run record. Approving it from Resurgo isn&apos;t built yet.{" "}
+          <Link to={`/runs/${r.run_id}#fix`} className="font-semibold underline underline-offset-4 hover:text-accent-strong">
+            Open the fix
+          </Link>
+        </p>
+      )}
       {r.state === "skipped" && r.reason && <p className="basis-full text-sm text-muted-foreground">{r.reason}</p>}
     </li>
   );
@@ -41,6 +67,7 @@ export default function Installed() {
   const { id = "" } = useParams();
   const queueFull = useSearchParams()[0].get("queue") === "full";
   const { data, error, loading } = useInstallation(id);
+  const configFixes = new Set((useRuns().data ?? []).filter((x) => x.fix_kind === "config").map((x) => x.id));
   const repos = data?.repos ?? [];
   const finished = data?.state === "done" || data?.state === "rejected";
 
@@ -77,8 +104,16 @@ export default function Installed() {
             <p className="font-mono text-sm text-muted-foreground">
               Installation {data.installation_id}
               {data.account ? ` · ${data.account}` : ""}
+              {data.queued_at && !Number.isNaN(Date.parse(data.queued_at)) ? ` · Queued at ${fmtWhen(Date.parse(data.queued_at) / 1000)}` : ""}
               {!finished && repos.length > 0 ? " · updating every 5 s" : ""}
             </p>
+
+            {data.state === "checking" && data.reason && (
+              <p className="mt-4" role="status">
+                <span aria-hidden className="font-mono">◌ </span>
+                {data.reason}
+              </p>
+            )}
 
             {data.state === "rejected" && (
               <p className="mt-4" role="status">
@@ -98,7 +133,7 @@ export default function Installed() {
                     </a>
                     .
                   </>
-                ) : (
+                ) : data.reason ? null : (
                   "Waiting for the runner to pick this up."
                 )}
               </p>
@@ -107,13 +142,24 @@ export default function Installed() {
             {repos.length > 0 && (
               <ul className="mt-4 divide-y divide-border rounded-lg border border-border bg-panel" role="list">
                 {repos.map((r, i) => (
-                  <RepoRow key={`${r.repo}/${r.path ?? ""}`} r={r} i={i} />
+                  <RepoRow key={`${r.repo}/${r.path ?? ""}`} r={r} i={i} configFix={!!r.run_id && configFixes.has(r.run_id)} />
                 ))}
               </ul>
             )}
           </>
         )}
       </section>
+
+      {data?.state === "done" && repos.length > 0 && (
+        <p className="mt-6">
+          <a
+            href={INSTALL_URL}
+            className="press inline-flex min-h-12 items-center rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
+          >
+            Add more repos
+          </a>
+        </p>
+      )}
 
       <p className="mt-10">
         <Link to="/runs" className="text-sm font-semibold underline underline-offset-4 hover:text-accent-strong">See every recorded run</Link>

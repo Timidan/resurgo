@@ -143,3 +143,14 @@ Not done / limits:
 - **Stats**: `NumberTicker` counts once, 1.1 s on `--ease-enter`, tabular figures, screen readers get the final value only, reduced motion shows it at once. A median over fewer than 5 fixes says how many ("(1 fix)").
 - **Beam**: SolutionTabs draws a connector between the four stage tabs (down the left on lg, sideways above the tabs below lg). When the list first enters view (or is already above the viewport), the icons draw, then after 1.1 s one beam runs it in 1.4 s on `--ease-enter`; the connector holds. `--beam` is written on the wrapper from JS; each segment and node derives its part in CSS. The excerpt stream, the tab auto-advance and the stat tickers wait for it (`onBeamDone`). Reduced motion: drawn at once.
 - **Gallery rows** wrap the badge under the repo name on narrow screens instead of truncating the name to one letter.
+
+## UX pass (10 Oct, evening)
+
+- **360 px**: the landing was 403 px wide because the checked-repositories tiles (`LiveTiles`) and the How-it-works grid were single-column grids without `grid-cols-1`; both have it now. The stage chips already sat in their own scroller; they now snap. `check-render.mjs` measures 360 too, plus `/data` and, with a fourth argument (an installation id), `/installed/<id>`.
+- **Waiting state**: the worker writes `reason` (while a sweep holds the host) and `queued_at` on the installation, and `started` on a repo entry when its check begins. `/installed/<id>` shows them. Repo entries from before this change have no `started`; the page copes.
+- **Approval**: `/installed` and the run view say the patch is there to review and that approving from Resurgo isn't built yet. `/runs/<id>#fix` opens the fix diff.
+- **"Pull request not opened yet"** shows for a passed config fix with no PR. The installation status has no fix kind, so the page looks the run up in `/api/runs`.
+- **Gallery**: cards below md, table from md; filters (repo text, set and agent, status) are client-side and only offer chips that match a run.
+- **Versions** display as `agent v1` or `early build` (`agentLabel`); the raw tag stays in Identifiers.
+- **Repo box** is "Find a repository in the gallery". **Run it yourself** links to the README section.
+- **Touch**: `pointer-coarse:` raises header links, install, theme toggle and copy to 44 px.

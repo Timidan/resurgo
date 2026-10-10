@@ -33,6 +33,7 @@ POLL_S = 10
 RECHECK_AFTER = timedelta(days=7)
 RESULTS = ("runs", "runs_with_gaps", "broken", "unsupported")
 OPEN = ("queued", "checking")
+WAIT_REASON = "Waiting for the evaluation run to finish. Checks run one at a time."
 
 
 class GitHubError(Exception):
@@ -95,7 +96,7 @@ def find_record(runs_dir, repo, sha, path, version):
 
 def entry(repo, sha="", path="", state="queued", reason=""):
     return {"repo": repo, "sha": sha[:12], "path": path, "state": state, "reason": reason,
-            "run_id": None, "result": None, "needs_approval": False, "pr": None}
+            "run_id": None, "result": None, "needs_approval": False, "pr": None, "started": None}
 
 
 def label(it):
@@ -164,7 +165,7 @@ def intake(queue, request, installation_id):
             checked += 1
             entries += plan(name, repo["default_branch"], token)
     save(queue, {"installation_id": installation_id, "account": account, "state": "checking",
-                 "reason": "", "repos": entries})
+                 "reason": "", "queued_at": now(), "repos": entries})
     request.unlink(missing_ok=True)
     log(f"{installation_id} {account} checking {sum(e['state'] == 'queued' for e in entries)} "
         f"of {len(entries)} repo paths")
@@ -195,6 +196,16 @@ def sweep_running():
     return subprocess.run(["pgrep", "-f", "--", r"-m resurgo\.sweep"], capture_output=True).returncode == 0
 
 
+def note_waiting(queue):
+    """Tell every installation with open work why nothing is moving: a sweep holds the host."""
+    for f in (queue / "status").glob("*.json"):
+        s = load(f)
+        if s and s.get("state") == "checking" and not s.get("reason") \
+                and any(i["state"] in OPEN for i in s["repos"]):
+            s["reason"] = WAIT_REASON
+            save(queue, s)
+
+
 def open_pr(it, rec):
     """Open the PR for a passed run with a fix that needs no approval; the {url, number} or None."""
     run_dir = RUNS / it["run_id"]
@@ -214,10 +225,13 @@ def open_pr(it, rec):
 def check(queue, status, it):
     """Reuse a recorded run or run one now. False when a sweep holds the host."""
     rec = find_record(RUNS, it["repo"], it["sha"], it["path"], __version__)
+    if rec is None and sweep_running():
+        note_waiting(queue)
+        return False
+    status["reason"] = ""
     if rec is None:
-        if sweep_running():
-            return False
         it["state"] = "checking"
+        it["started"] = now()
         save(queue, status)
         log(f"{status['installation_id']} {label(it)} checking")
         try:
