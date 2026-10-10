@@ -1,0 +1,39 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read web/NOTES.md, docs/LANDING.md, docs/ANIMATION.md and api/main.py first. Then read the findings file: /tmp/claude-1000/-home-timidan-Desktop-neatharness/457a6a36-16f5-4310-8c76-7e25ac551443/scratchpad/build/polish_findings.md. Every item in it was checked against the code or the live site.
+
+This session fixes truth, copy and launch readiness. A second session does colours, UI polish, typography and the inspira-ui ports afterwards, so do NOT apply the better-colors, better-ui, better-typography or inspira-ui sections. Commit in small steps.
+
+Apply these sections of the findings file:
+
+1. **"HIGH, misleading showcase"** (under the accessibility/writing cross-check). Add a `weakens_tests` flag computed in `api/main.py` from each record's fix.patch, using exactly the rule described there.
+   - Give flagged records their own status, "Fix skipped tests · not a repair".
+   - Never feature them.
+   - Say so plainly in the run view.
+   - Featuring should prefer config fixes.
+2. **better-writing items 1 to 17.**
+   - For item 1, add `set`, `agent_version` and `sweep_id` to the `/api/runs` summary.
+   - Compute the landing stats per set from records only, and label them truthfully.
+   - Once both v1 and v2 records exist for the held-out set, show them side by side as the before/after. Until v2 exists, show v1 alone with its label.
+   - Tag gallery rows and the run view with the agent version and set.
+3. **site-readiness items 1 to 4:**
+   - full share-card tags with an absolute image URL;
+   - per-run `<title>`, description and og/twitter title/description injected server-side for `/runs/<id>`, with every value escaped (title format `<repo> · <status word> · Resurgo`, description at most 160 characters);
+   - a `/data` page ("What Resurgo stores"), linked from the footer, the line under the install button and `/installed/<id>`;
+   - `robots.txt` (text/plain) and `sitemap.xml` (application/xml) routes ahead of the SPA fallback.
+
+Local data: `RUNS_DIR` for the API on port 8787 is `/home/timidan/Desktop/resurgo/runs`. It now holds the v1 held-out records too, including the two test-skipping runs `20261010T153909Z-1257e0e` (nomoixyz/vulcan) and `20261010T154316Z-504ada8` (defi-wonderland/solidity-foundry-boilerplate). That server runs the OLD API code, and the owner restarts it after you finish. So test your API changes with FastAPI's TestClient.
+- Add one small test that a `foundry.toml` `no_match_path` patch is flagged and a `.nvmrc` patch is not.
+- Add one small test that `/robots.txt` is text/plain and keeps `/installed/` and `/auth/` disallowed.
+
+Check:
+- Run `npm run build` and `web/check-render.mjs` (420 and 1280px, light and dark).
+- Run the API tests: `uv run --project . --with pytest --with httpx pytest -q api`.
+- Read every changed string once in the rendered page, or in the built bundle if the old server hides it.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- Never print secrets.
+- No tool or AI attribution in commits.
+- Don't invent numbers, prices, users or results.
+- Finish with a short report: what changed per item, the test and check results, and anything you weren't sure about.
