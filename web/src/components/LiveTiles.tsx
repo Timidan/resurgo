@@ -67,7 +67,7 @@ export function LiveTiles({ runs }: { runs: RunSummary[] }) {
                       {m.word}
                     </span>
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs tabular-nums text-muted-foreground">
                     Latest run · {fmtDur(r.duration_s)}
                     {r.fix_kind ? ` · ${fixLabel(r.fix_kind, r.needs_approval).toLowerCase()} fix` : ""}
                   </span>
