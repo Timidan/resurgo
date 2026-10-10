@@ -14,7 +14,7 @@
 :root {
   --canvas: #F3F6FA; --panel: #FFFFFF; --muted: #EAEFF5;
   --ink: #0F1720; --ink-2: #2A3441; --secondary: #55606E;
-  --hairline: #DCE3EC; --control: #C6D0DC;
+  --hairline: #DCE3EC; --control: #7F8DA1;   /* 3.4:1 on panel, 3.1:1 on canvas (WCAG 1.4.11) */
   --accent: #2F6BFF;          /* art, focus rings, large accents */
   --accent-strong: #2459E8;   /* buttons with white text (5.7:1), links */
   --on-accent: #FFFFFF;
@@ -23,33 +23,36 @@
   --gaps: #8A6400;  --gaps-soft: #FBF1D2;
   --broken: #BE3A2E; --broken-soft: #FBE7E3;
   --checking: #2459E8; --checking-soft: #E7EEFF;
+  --approval: #6D47B8; --approval-soft: #EFEAFB; /* fix verified, waiting for the owner: its own role, not amber */
   --terminal: #FFFFFF; --terminal-ink: #0F1720;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
   --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
-  --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
-  --hairline: #263244; --control: #33415A;
-  --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+  --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #ADB9C8;
+  --hairline: #263244; --control: #5C6E8A;
+  --accent: #6E98FF; --accent-strong: #92B3FD; --on-accent: #0E1420;
   --evidence: #D9F24A; --on-evidence: #0F1720;
-  --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+  --runs: #55D591;  --runs-soft: rgba(79,208,140,.14);
   --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
-  --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
-  --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+  --broken: #FEA89A; --broken-soft: rgba(255,138,120,.14);
+  --checking: #A0BEFE; --checking-soft: rgba(138,174,255,.14);
+  --approval: #C8B7FF; --approval-soft: rgba(200,183,255,.14);
   --terminal: #121A27; --terminal-ink: #EEF2F7;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
-    --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
-    --hairline: #263244; --control: #33415A;
-    --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+    --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #ADB9C8;
+    --hairline: #263244; --control: #5C6E8A;
+    --accent: #6E98FF; --accent-strong: #92B3FD; --on-accent: #0E1420;
     --evidence: #D9F24A; --on-evidence: #0F1720;
-    --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+    --runs: #55D591;  --runs-soft: rgba(79,208,140,.14);
     --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
-    --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
-    --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+    --broken: #FEA89A; --broken-soft: rgba(255,138,120,.14);
+    --checking: #A0BEFE; --checking-soft: rgba(138,174,255,.14);
+  --approval: #C8B7FF; --approval-soft: rgba(200,183,255,.14);
     --terminal: #121A27; --terminal-ink: #EEF2F7;
     color-scheme: dark;
   }
@@ -82,6 +85,8 @@
   --color-broken-soft: var(--broken-soft);
   --color-checking: var(--checking);
   --color-checking-soft: var(--checking-soft);
+  --color-approval: var(--approval);
+  --color-approval-soft: var(--approval-soft);
   --color-terminal: var(--terminal);
   --color-terminal-ink: var(--terminal-ink);
   /* Names the shadcn and SmoothUI components were written against. */
@@ -117,6 +122,10 @@ body {
 * {
   border-color: var(--hairline);
 }
+
+/* Headings break evenly; paragraphs avoid a last line of one word. */
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
 
 :focus-visible {
   outline: 2px solid var(--accent-strong);
@@ -158,7 +167,7 @@ body {
   }
 }
 
-/* Squash on press: 0.97 and back. Colours keep the chip timing. */
+/* Squash on press: 0.96 and back. Colours keep the chip timing. */
 .press {
   transition:
     scale var(--dur-chip) var(--ease-enter),
@@ -168,7 +177,7 @@ body {
     opacity var(--dur-chip) var(--ease-enter);
 }
 .press:not(:disabled):active {
-  scale: 0.97;
+  scale: 0.96;
   transition-duration: 90ms;
 }
 
@@ -255,6 +264,81 @@ body {
 }
 [data-in="true"] .draw {
   stroke-dashoffset: 0;
+}
+
+/*
+ * The beam (How it works): one beam runs the connector between the four stage tabs, once, then the
+ * connector holds its drawn state. SolutionTabs writes --beam (0 to 1) on the connector's wrapper;
+ * a segment shows its third of it (--i is the stage it leaves) and a node fills as the beam leaves it.
+ * Below lg the connector runs sideways above the tabs; from lg it runs down the left of the list.
+ * Geometry is measured from each tab's padding box: node centres sit 26 px along, 11 px (or 13 px) outside.
+ */
+.beam-seg,
+.beam-node {
+  position: absolute;
+  pointer-events: none;
+  --l: clamp(0, calc(var(--beam, 0) * 3 - var(--i)), 1);
+}
+.beam-seg {
+  left: 26px;
+  top: -12px;
+  width: calc(100% + 10px);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--hairline);
+}
+.beam-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent-strong);
+  transform-origin: 0 0;
+  scale: var(--l) 1;
+}
+/* The bright head of the beam, only while it is inside this segment. */
+.beam-head {
+  position: absolute;
+  top: -1px;
+  left: calc(var(--l) * 100%);
+  width: 28px;
+  height: 4px;
+  margin-left: -28px;
+  border-radius: 2px;
+  background: linear-gradient(to right, transparent, var(--accent));
+  box-shadow: 0 0 8px var(--accent);
+  opacity: calc(min(1, var(--l) * 24) * min(1, (1 - var(--l)) * 24));
+}
+.beam-node {
+  left: 21px;
+  top: -16px;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 2px solid var(--control);
+  background: var(--canvas);
+  /* Lit from a tenth of a segment before the beam arrives, so the last node is lit when it ends. */
+  --l: clamp(0, calc((var(--beam, 0) * 3 - var(--i) + 0.1) * 10), 1);
+}
+.beam-node-fill {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: var(--accent-strong);
+  scale: var(--l);
+}
+@media (min-width: 64rem) {
+  .beam-seg { left: -14px; top: 26px; width: 2px; height: calc(100% + 10px); }
+  .beam-fill { scale: 1 var(--l); }
+  .beam-head {
+    top: calc(var(--l) * 100%);
+    left: -1px;
+    width: 4px;
+    height: 28px;
+    margin: -28px 0 0;
+    background: linear-gradient(to bottom, transparent, var(--accent));
+  }
+  .beam-node { left: -18px; top: 21px; }
 }
 
 /* Things that arrive: a 2 px overshoot, then rest. --i staggers siblings by 45 ms. */

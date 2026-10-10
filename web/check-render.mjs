@@ -45,9 +45,10 @@ const PROBE = `(() => {
     .map((e) => ({ el: name(e), step: e.matches(stepOut) }));
   const install = [...document.querySelectorAll('a')].filter((a) => /Install on GitHub/i.test(a.textContent || '')).map((a) => a.href);
   // Logos: each has an accessible name and a tooltip. A mask must have its file; an <img> must have loaded.
-  const logo = (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return {
+  // Layout size (offsetWidth/Height): the Rust logo is scaled up optically in CSS, which must not count as its size.
+  const logo = (e) => { const cs = getComputedStyle(e); return {
     name: e.getAttribute('aria-label') ?? e.getAttribute('alt'), title: e.getAttribute('title'),
-    w: Math.round(r.width), h: Math.round(r.height), color: cs.backgroundColor, filter: cs.filter,
+    w: e.offsetWidth, h: e.offsetHeight, color: cs.backgroundColor, filter: cs.filter,
     drawn: e.tagName === 'IMG' ? (e.complete && e.naturalWidth > 0) : /url\\(/.test(cs.maskImage || cs.webkitMaskImage || ''),
     plainImg: e.tagName === 'IMG', named: e.tagName === 'IMG' || e.getAttribute('role') === 'img',
   }; };

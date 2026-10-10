@@ -106,7 +106,7 @@ export function RepoChat({ latest }: { latest: RunSummary[] }) {
               placeholder="owner/name or https://github.com/owner/name"
               autoComplete="off"
               spellCheck={false}
-              className="min-h-12 min-w-0 flex-1 rounded-lg border border-control bg-panel px-4 font-mono text-sm text-ink placeholder:text-secondary"
+              className="min-h-12 min-w-0 flex-1 rounded-lg border border-control bg-panel px-4 font-mono text-base text-ink placeholder:text-secondary sm:text-sm"
             />
             <button
               type="submit"

@@ -5,9 +5,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Logo, LogoImage, type ImageName } from "@/components/Logo";
 import AIReasoning from "@/components/smoothui/ai-reasoning";
 import { LiveTiles } from "@/components/LiveTiles";
+import { NumberTicker } from "@/components/NumberTicker";
 import { RepoChat } from "@/components/RepoChat";
 import { SolutionTabs } from "@/components/SolutionTabs";
-import { Story } from "@/components/Story";
+import { Story, StorySkeleton } from "@/components/Story";
 import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, Mark, Reveal, StatusBadge } from "@/components/ui-bits";
 import type { RunDetail, RunSummary, Step } from "@/lib/api";
@@ -18,8 +19,8 @@ import { useLandingData, type LandingData, type StatGroup } from "./landing-data
 const LABEL = "font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground";
 
 /** The command that reproduces the featured run, as logged in the build log. */
-const commandFor = (d: RunDetail | null) =>
-  d ? `uv run python -m resurgo.run ${d.result.repo} ${d.result.sha}${d.result.path ? ` --path ${d.result.path}` : ""}` : null;
+const commandFor = (r: { repo?: string | null; sha?: string | null; path?: string | null } | null) =>
+  r?.repo && r.sha ? `uv run python -m resurgo.run ${r.repo} ${r.sha}${r.path ? ` --path ${r.path}` : ""}` : null;
 
 const stepRows = (steps: Step[], prefix: string): TermRow[] =>
   steps.map((s, i) => ({
@@ -59,7 +60,8 @@ function CommandChip({ command }: { command: string }) {
 /* 1. Hero ------------------------------------------------------------------ */
 function Hero({ data }: { data: LandingData }) {
   const f = data.featured;
-  const cmd = commandFor(f);
+  // From the list row, so the command is there as soon as the list is, and the hero does not grow when the record arrives.
+  const cmd = commandFor(f?.result ?? data.featuredSummary);
   return (
     <section className="mx-auto grid w-full max-w-7xl gap-14 px-4 pb-24 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24">
       <div className="min-w-0">
@@ -116,8 +118,8 @@ function Hero({ data }: { data: LandingData }) {
       <div className="min-w-0 lg:pt-4">
         {f ? (
           <Story detail={f} replayOnHover label={`A real run of ${f.result.repo}, replayed`} />
-        ) : data.loading ? (
-          <p className="text-muted-foreground" role="status">◌ Loading a recorded run…</p>
+        ) : data.loading || data.featuredSummary ? (
+          <StorySkeleton tiles={data.featuredSummary?.verifier_steps?.length} />
         ) : null}
       </div>
     </section>
@@ -192,7 +194,7 @@ function Projects({ data }: { data: LandingData }) {
             {data.latest.map((r) => (
               <li key={r.id}>
                 <Link to={`/runs/${r.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-muted">
-                  <span className="min-w-0 flex-1 truncate font-semibold">
+                  <span className="min-w-[12rem] flex-1 truncate font-semibold">
                     {r.repo}{r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
                   </span>
                   <span className="font-mono text-sm tabular-nums text-muted-foreground">{fmtDur(r.duration_s)}</span>
@@ -304,11 +306,19 @@ function Problem({ data }: { data: LandingData }) {
   );
 }
 
-function StatBlock({ g, lead }: { g: StatGroup; lead: string | null }) {
+/** A median over fewer fixes than this carries its count in the label. */
+const FEW = 5;
+
+function StatBlock({ g, lead, hold }: { g: StatGroup; lead: string | null; hold: boolean }) {
+  const whole = (n: number) => String(Math.round(n));
+  // A median over a handful of fixes says little: show how many it is taken over.
+  const fewFixes = g.medianN < FEW ? ` (${g.medianN} ${g.medianN === 1 ? "fix" : "fixes"})` : "";
   const stats = [
-    { k: "Repos checked", v: String(g.repos) },
-    { k: "Verified in a clean container", v: String(g.verified) },
-    ...(g.medianVerifiedS != null ? [{ k: "Median wall time of a verified fix", v: fmtDur(g.medianVerifiedS) }] : []),
+    { k: "Repos checked", v: g.repos, format: whole },
+    { k: "Verified in a clean container", v: g.verified, format: whole },
+    ...(g.medianVerifiedS != null
+      ? [{ k: `Median wall time of a verified fix${fewFixes}`, v: g.medianVerifiedS, format: fmtDur }]
+      : []),
   ];
   return (
     <div className="min-w-0">
@@ -319,7 +329,9 @@ function StatBlock({ g, lead }: { g: StatGroup; lead: string | null }) {
       <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
         {stats.map((s) => (
           <div key={s.k} className="bg-canvas p-6">
-            <dd className="font-mono text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl">{s.v}</dd>
+            <dd className="font-mono text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl">
+              <NumberTicker value={s.v} format={s.format} hold={hold} />
+            </dd>
             <dt className="mt-2 text-muted-foreground">{s.k}</dt>
           </div>
         ))}
@@ -338,6 +350,8 @@ function Solution({ data }: { data: LandingData }) {
   const f = data.featured;
   if (!f) return null;
   const st = data.stats;
+  // The beam in the tabs runs first; the numbers below count up only after it has finished.
+  const [beamDone, setBeamDone] = useState(false);
   const compare = st.length > 1 && st.every((g) => g.set === "heldout");
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
@@ -345,14 +359,14 @@ function Solution({ data }: { data: LandingData }) {
         <Eyebrow>How it works</Eyebrow>
         <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Check. Diagnose. Repair. Prove.</h2>
       </Reveal>
-      <SolutionTabs detail={f} />
+      <SolutionTabs detail={f} onBeamDone={() => setBeamDone(true)} />
 
       {st.length > 0 && (
         <Reveal className="mt-16">
           {/* Two agent versions of the held-out set: the older is the before, the newest the after. Otherwise each block stands alone. */}
           <div className={cn("grid gap-8", st.length > 1 && "lg:grid-cols-2")}>
             {(compare ? [st[0], st[st.length - 1]] : st).map((g, i) => (
-              <StatBlock key={g.key} g={g} lead={compare ? (i === 0 ? "Before" : "After") : null} />
+              <StatBlock key={g.key} g={g} lead={compare ? (i === 0 ? "Before" : "After") : null} hold={!beamDone} />
             ))}
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
@@ -380,7 +394,7 @@ function Artifacts({ data }: { data: LandingData }) {
     2,
   );
   const cards: { title: string; body: string; code: string }[] = [
-    { title: "Reproduce it", body: "One command re-runs the check from a fresh clone.", code: commandFor(f) ?? "" },
+    { title: "Reproduce it", body: "One command re-runs the check from a fresh clone.", code: commandFor(f.result) ?? "" },
     { title: "The run record", body: "Every run writes one JSON file. This is the real one, trimmed.", code: record },
     ...(f.fix_patch ? [{ title: "The patch", body: "The fix, as a plain unified diff you can read before it merges.", code: f.fix_patch.trim() }] : []),
     ...(proof !== "[]" ? [{ title: "The proof", body: "What the separate clean container ran, and how each step ended.", code: proof }] : []),
@@ -444,7 +458,13 @@ function Closing({ data }: { data: LandingData }) {
   const history = [...data.runs].filter((r) => r.status !== "checking").reverse();
   const tone = (s: string) => {
     const m = statusMeta(s);
-    return m.text === "text-runs" ? "bg-runs text-canvas" : m.text === "text-broken" ? "bg-broken text-canvas" : "bg-gaps text-canvas";
+    return m.text === "text-runs"
+      ? "bg-runs text-canvas"
+      : m.text === "text-broken"
+        ? "bg-broken text-canvas"
+        : m.text === "text-approval"
+          ? "bg-approval text-canvas"
+          : "bg-gaps text-canvas";
   };
   const steps = ["Install the app", "Pick the repos", "Resurgo checks each from a fresh clone", "A pull request for each verified fix"];
   return (
@@ -476,7 +496,10 @@ function Closing({ data }: { data: LandingData }) {
             ))}
           </ol>
           <p className="mt-3 flex flex-wrap gap-x-5 font-mono text-xs text-muted-foreground">
-            <span>✓ Runs</span><span>◐ Runs with gaps</span><span>◐ Fixed, unverified</span><span>◆ Fix verified · awaiting approval</span><span>✗ Fix skipped tests</span><span>✗ Broken</span>
+            {["runs", "runs_with_gaps", "fixed", "fix_awaiting_approval", "fix_skipped_tests", "broken"].map((k) => {
+              const m = statusMeta(k);
+              return <span key={k} className={m.text}>{m.glyph} {m.word}</span>;
+            })}
           </p>
         </Reveal>
       )}

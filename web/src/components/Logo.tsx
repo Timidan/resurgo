@@ -17,14 +17,16 @@ const MASKS = {
 } as const;
 
 const IMAGES = {
-  neatlogsIcon: { name: "neatlogs app icon", file: "neatlogs-icon.png" },
+  // A dark rounded square: it gets a 1px edge so it doesn't melt into the dark canvas.
+  neatlogsIcon: { name: "neatlogs app icon", file: "neatlogs-icon.png", edge: true },
   node: { name: "Node.js", file: "node-js-icon.svg" },
   pnpm: { name: "pnpm", file: "pnpm-frame.svg" },
   npm: { name: "npm", file: "npm-square.svg" },
   yarn: { name: "Yarn", file: "yarn-kitten-circle.svg" },
   foundry: { name: "Foundry", file: "foundry-logo.png" },
   // Black artwork: shown white on the dark canvas, as Checkly does for black logos.
-  rust: { name: "Cargo (Rust)", file: "rust-logo-blk.svg", invertOnDark: true },
+  // The artwork has built-in padding, so it reads small beside its neighbours; scaled up in CSS only.
+  rust: { name: "Cargo (Rust)", file: "rust-logo-blk.svg", invertOnDark: true, optical: 1.2 },
   docker: { name: "Docker", file: "docker-mark-blue.svg" },
 } as const;
 
@@ -77,7 +79,7 @@ export function Logo({
 
 export function LogoImage({ name, size, className }: { name: ImageName; size: string; className?: string }) {
   const theme = useTheme();
-  const l: { name: string; file: string; invertOnDark?: boolean } = IMAGES[name];
+  const l: { name: string; file: string; invertOnDark?: boolean; edge?: boolean; optical?: number } = IMAGES[name];
   return (
     <img
       src={`/logos/${l.file}`}
@@ -86,7 +88,13 @@ export function LogoImage({ name, size, className }: { name: ImageName; size: st
       data-logo={name}
       draggable={false}
       className={cn("block w-auto max-w-none shrink-0", className)}
-      style={{ height: size, filter: l.invertOnDark && theme === "dark" ? "invert(1)" : undefined }}
+      style={{
+        height: size,
+        filter: l.invertOnDark && theme === "dark" ? "invert(1)" : undefined,
+        scale: l.optical,
+        outline: l.edge ? `1px solid ${theme === "dark" ? "oklch(1 0 0 / 0.1)" : "oklch(0 0 0 / 0.1)"}` : undefined,
+        outlineOffset: l.edge ? "-1px" : undefined,
+      }}
     />
   );
 }

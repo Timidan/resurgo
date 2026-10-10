@@ -47,6 +47,47 @@ function Win({
 const stagger = (i: number, delayMs = 0) => ({ "--i": i, "--d": `${delayMs}ms` }) as CSSProperties;
 
 /**
+ * The Story's frame with nothing in it, at the Story's own sizes (same window chrome, the terminal's
+ * fixed height, a tile row, the verdict line), so the hero does not jump when the run arrives.
+ * `tiles` is how many clean-container steps the run will show, when the list already says.
+ */
+export function StorySkeleton({ tiles = 5 }: { tiles?: number }) {
+  const bar = "rounded bg-muted";
+  return (
+    <div className="space-y-4" role="status" aria-label="Loading a recorded run">
+      <div className="space-y-4">
+        <Win title="…" entered dim={false}>
+          <div className="p-4">
+            <div className="flex items-center gap-3"><span className={cn(bar, "h-7 w-40")} /></div>
+            <span className={cn(bar, "mt-2 block h-5 w-64 max-w-full")} />
+          </div>
+        </Win>
+        <Win title="agent · reasoning" entered dim={false}>
+          <div className="min-h-[7.5rem] p-4"><span className={cn(bar, "block h-5 w-3/4")} /></div>
+        </Win>
+        <Win title="resurgo run" entered dim={false}>
+          <div className="h-[17.5rem]" />
+        </Win>
+        <Win title="clean container · same commit, only the fix" entered dim={false}>
+          <div className="p-4">
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5" role="list">
+              {Array.from({ length: Math.max(1, tiles) }, (_, i) => (
+                <li key={i} className="rounded-md border border-border bg-panel p-3">
+                  <span className={cn(bar, "block h-[1.3125rem] w-20")} />
+                  <span className="mt-1 block h-4" />
+                </li>
+              ))}
+            </ul>
+            <span className="mt-4 block h-10" />
+          </div>
+        </Win>
+      </div>
+      <p className="h-5" />
+    </div>
+  );
+}
+
+/**
  * The choreographed window stack, replaying one real run: the repo card, the agent streaming its
  * recorded rationale, the terminal replaying the recorded steps, then the clean-container tiles
  * and the verdict. One window acts at a time; the others dim. Loops after a pause when asked, or

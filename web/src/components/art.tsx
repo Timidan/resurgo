@@ -16,9 +16,9 @@ export function LogoMark({ className, title = "Resurgo" }: { className?: string;
 const MARK_PATHS = ["M2 14V8a5 5 0 0 1 5-5h3v3H7a2 2 0 0 0-2 2v6Z", "M11 1h3v3h-3Z"];
 
 /**
- * Background art for the page: a quiet grid of squares and an oversized outline of the
- * mark that drifts slower than the page. It is purely decorative and holds still when
- * the visitor prefers reduced motion.
+ * Background art for the page: a quiet grid of squares behind the content, and an oversized
+ * outline of the mark that drifts slower than the page, kept in the margin beside the content
+ * column. It is purely decorative and holds still when the visitor prefers reduced motion.
  */
 export function BackgroundArt() {
   const reduce = useReducedMotion();
@@ -44,33 +44,37 @@ export function BackgroundArt() {
         className="absolute inset-0"
         style={{
           backgroundImage:
-            "linear-gradient(to right, color-mix(in srgb, var(--control) 55%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--control) 55%, transparent) 1px, transparent 1px)",
+            "linear-gradient(to right, var(--hairline) 1px, transparent 1px), linear-gradient(to bottom, var(--hairline) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
           maskImage: "radial-gradient(ellipse 80% 60% at 70% 20%, black, transparent 75%)",
           WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 70% 20%, black, transparent 75%)",
         }}
       />
-      {/* Draws once, quickly, before the hero story's first window finishes rising; then only drifts. */}
-      <motion.svg
-        data-in={drawn}
-        viewBox="0 0 16 16"
-        className="absolute -right-[12vw] top-[4vh] h-[110vh] w-auto text-accent opacity-[0.16]"
-        style={reduce ? undefined : { y }}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={0.1}
-      >
-        {MARK_PATHS.map((d, i) => (
-          <path
-            key={d}
-            d={d}
-            pathLength={1}
-            className="draw"
-            style={{ "--rd": `${i * 0.3}s`, "--draw-ms": "1200ms" } as CSSProperties}
-          />
-        ))}
-      </motion.svg>
-      <motion.div className="absolute left-[8vw] top-[62vh] size-3 border border-control bg-evidence" style={reduce ? undefined : { y: rise }} />
+      {/* The mark and the lemon square live in the right margin, beyond the 80rem content column, and only
+          where that margin is wide enough to hold them: they never sit under text, logos or controls. */}
+      <div className="absolute inset-y-0 right-0 hidden overflow-hidden min-[1500px]:block" style={{ width: "calc(50vw - 40rem)" }}>
+        {/* Draws once, quickly, before the hero story's first window finishes rising; then only drifts. */}
+        <motion.svg
+          data-in={drawn}
+          viewBox="0 0 16 16"
+          className="absolute top-[4vh] h-[110vh] w-auto text-accent opacity-[0.16]"
+          style={{ right: "-13.75vh", ...(reduce ? {} : { y }) }}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={0.1}
+        >
+          {MARK_PATHS.map((d, i) => (
+            <path
+              key={d}
+              d={d}
+              pathLength={1}
+              className="draw"
+              style={{ "--rd": `${i * 0.3}s`, "--draw-ms": "1200ms" } as CSSProperties}
+            />
+          ))}
+        </motion.svg>
+        <motion.div className="absolute left-1/2 top-[62vh] -ml-1.5 size-3 border border-control bg-evidence" style={reduce ? undefined : { y: rise }} />
+      </div>
     </div>
   );
 }
