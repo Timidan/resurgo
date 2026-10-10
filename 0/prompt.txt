@@ -1,0 +1,33 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read web/NOTES.md, docs/ANIMATION.md (Lasseter's principles, which apply to every motion you add), web/src/index.css and the findings file first: /tmp/claude-1000/-home-timidan-Desktop-neatharness/457a6a36-16f5-4310-8c76-7e25ac551443/scratchpad/build/polish_findings.md.
+
+A previous session already applied the site-readiness, writing and showcase sections. This session applies the rest. Commit in small steps.
+
+1. **better-colors, items 1 to 4.** Keep the hex token system.
+   - Add the `--approval` / `--approval-soft` role tokens in violet, for light and both dark blocks. Use them for "Fix verified · awaiting approval" everywhere: the badge, the legend, the gallery, the run view and `/installed`.
+   - Apply the dark token values listed in the findings, in BOTH dark blocks.
+   - Use `text-accent-strong` where `accent` is used as small text.
+   - Bring `--control` to at least 3:1 against panel and canvas, in both themes.
+   - Re-measure the changed pairs (WCAG ratio, plus APCA if you can), and report the numbers.
+2. **better-ui, items 1 to 5:**
+   - a hero placeholder at the Story's size, so nothing jumps;
+   - the background art kept outside the content column, so it never overlaps text, logos or controls;
+   - press scale 0.96;
+   - a dark-mode outline on the neatlogs icon;
+   - the Rust logo's optical size, scaled up in CSS (the artwork stays unchanged).
+3. **better-typography, items 1 to 3:** `text-wrap` balance on headings and pretty on paragraphs, the repo input at `text-base sm:text-sm`, and `tabular-nums` on the tile duration.
+4. **Stats label.** When a "median" is computed from very few values, show the count. For example, "Median wall time of a verified fix (1 fix)".
+5. **inspira-ui ports.** Inspira UI is a Vue library, so port the two ideas to React using the installed `motion/react`, with no new dependency.
+   - **Number Ticker:** the evidence numbers count up once when they scroll into view. Use ease-out over 900 to 1200 ms with `tabular-nums`. Under reduced motion, show the final value at once. Never re-count.
+   - **Animated Beam:** in "How it works", one beam travels once along the connector Check → Diagnose → Repair → Prove when the section enters view, then the connector holds its drawn state. Use one easing, and nothing else in that section animates while the beam runs.
+   - Both play once and hold, like the hero replay.
+6. **Check.**
+   - Run `npm run build` and `web/check-render.mjs` (420 and 1280px, light and dark) against the API on port 8787, which now runs the current API code.
+   - Take close-ups of the stats with the ticker settled, the How-it-works beam drawn, the status badges (including awaiting approval and fix skipped tests) in both themes, and the works-with row with the background art.
+   - Look at them yourself before reporting.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- No tool or AI attribution in commits.
+- Finish with a short report: what changed per item, the measured contrast numbers, the check results with screenshot paths, and anything you weren't sure about.
