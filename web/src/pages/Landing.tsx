@@ -88,7 +88,7 @@ function Hero({ data }: { data: LandingData }) {
           </Link>
         </div>
         <p className="mt-4 max-w-xl text-sm text-muted-foreground">
-          Pick the repos. Resurgo rebuilds each from a fresh clone and opens a pull request only for a fix that passes in a clean container.{" "}
+          Public repos only · Pull requests only for fixes that pass a clean container ·{" "}
           <Link to="/data" className="underline underline-offset-4 hover:text-foreground">What Resurgo stores</Link>
         </p>
         {cmd && (
