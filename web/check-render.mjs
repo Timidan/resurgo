@@ -153,5 +153,41 @@ for (const [name, path] of pages) {
     }
   }
 }
+// The hero replay plays once and holds its final frame; only a mouse entering it plays it again.
+{
+  const STATE = `(() => { const g = document.querySelector('.story-group'); return JSON.stringify({
+    leaving: g?.dataset.leaving === 'true', verdict: !!g?.querySelector('.verdict-land'),
+    box: g ? (({ left, top }) => ({ x: left + 24, y: Math.min(top + 24, innerHeight - 24) }))(g.getBoundingClientRect()) : null }); })()`;
+  const state = async () => JSON.parse(await browser.value(STATE));
+  const until = async (test, ms) => {
+    for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (test(await state())) return true;
+    return false;
+  };
+  const holds = async (test, ms) => !(await until((s) => !test(s), ms));
+  const mouse = (x, y) => browser.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+  const touchOver = () =>
+    browser.value(`document.querySelector('.story-group').parentElement.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'touch', relatedTarget: document.body }))`);
+
+  await browser.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await browser.send("Page.navigate", { url: base + "/" });
+  await mouse(1, 1);
+  const played = await until((s) => s.verdict, 60000);
+  await sleep(2000); // the clock stops just after the verdict
+  const stays = played && (await holds((s) => s.verdict && !s.leaving, 6000));
+  await touchOver();
+  const touchIgnored = played && (await holds((s) => s.verdict && !s.leaving, 1500));
+  const { x, y } = (await state()).box ?? { x: 100, y: 100 };
+  await mouse(x, y);
+  const faded = await until((s) => s.leaving, 1000);
+  const cleared = faded && (await until((s) => !s.verdict, 2000));
+  const again = cleared && (await until((s) => s.verdict, 60000));
+  await sleep(1500);
+  const once = again && (await holds((s) => s.verdict && !s.leaving, 4000));
+  const replayOk = stays && touchIgnored && faded && cleared && again && once;
+  failed ||= !replayOk;
+  console.log(
+    `${replayOk ? "PASS" : "FAIL"} hero replay: plays ${played}, holds final 6s ${stays}, touch ignored ${touchIgnored}, mouse fades ${faded}, clears ${cleared}, plays again ${again}, holds once ${once}`,
+  );
+}
 browser.close();
 process.exit(failed ? 1 : 0);

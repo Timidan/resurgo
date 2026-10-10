@@ -49,22 +49,25 @@ const stagger = (i: number, delayMs = 0) => ({ "--i": i, "--d": `${delayMs}ms` }
 /**
  * The choreographed window stack, replaying one real run: the repo card, the agent streaming its
  * recorded rationale, the terminal replaying the recorded steps, then the clean-container tiles
- * and the verdict. One window acts at a time; the others dim. Loops after a pause; under reduced
- * motion it shows the final state.
+ * and the verdict. One window acts at a time; the others dim. Loops after a pause when asked, or
+ * replays once on mouse hover after it finishes; under reduced motion it shows the final state.
  */
 export function Story({
   detail,
   loop = false,
+  replayOnHover = false,
   runKey,
   label = "Replay of a recorded run",
 }: {
   detail: RunDetail;
   loop?: boolean;
+  /** Once it has finished, a mouse entering the window plays it again once. */
+  replayOnHover?: boolean;
   runKey?: unknown;
   label?: string;
 }) {
   const story = useMemo(() => buildStory(detail), [detail]);
-  const { ref, t, live, leaving, reduce } = useClock(story.total, { loop, runKey });
+  const { ref, t, live, leaving, replay, reduce } = useClock(story.total, { loop, runKey });
   const f = useMemo(() => frameAt(story, t), [story, t]);
   const s = detail.summary;
   const meta = statusMeta(s.status);
@@ -87,7 +90,13 @@ export function Story({
   }, [f.verdict, verified, reduce]);
 
   return (
-    <div ref={ref} className="space-y-4" role="group" aria-label={label}>
+    <div
+      ref={ref}
+      className="space-y-4"
+      role="group"
+      aria-label={label}
+      onPointerEnter={replayOnHover ? (e) => e.pointerType === "mouse" && replay() : undefined}
+    >
       {/* The windows animate; this is what a screen reader gets. */}
       <p className="sr-only">
         {detail.result.repo} at {detail.result.sha}: {meta.word}

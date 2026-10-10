@@ -100,7 +100,7 @@ function Hero({ data }: { data: LandingData }) {
 
       <div className="min-w-0 lg:pt-4">
         {f ? (
-          <Story detail={f} loop label={`A real run of ${f.result.repo}, replayed`} />
+          <Story detail={f} replayOnHover label={`A real run of ${f.result.repo}, replayed`} />
         ) : data.loading ? (
           <p className="text-muted-foreground" role="status">◌ Loading a recorded run…</p>
         ) : null}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
 /** Roughly how fast agent text streams, in characters per second. */
@@ -37,6 +37,8 @@ const LEAVE_MS = 400;
  * A playback clock in milliseconds. It runs only while the element is on screen and the tab is
  * visible, loops after `hold` ms when asked, and sits at `total` under reduced motion.
  * `live` is true while the primary beat plays; `leaving` during the fade before a loop restarts.
+ * `replay()` plays a finished, non-looping run once more: it fades out on the same leave fade,
+ * then restarts. It does nothing while playing, while fading, or under reduced motion.
  */
 export function useClock(total: number, opts: { loop?: boolean; hold?: number; runKey?: unknown } = {}) {
   const { loop = false, hold = 4500, runKey } = opts;
@@ -47,6 +49,18 @@ export function useClock(total: number, opts: { loop?: boolean; hold?: number; r
   const [leaving, setLeaving] = useState(false);
   const visible = useRef(true);
   const elapsed = useRef(0);
+  const finished = useRef(false);
+  const fading = useRef(0);
+  const [replayKey, setReplayKey] = useState(0);
+
+  const replay = useCallback(() => {
+    if (!finished.current || fading.current || reduce || loop) return;
+    setLeaving(true);
+    fading.current = window.setTimeout(() => {
+      fading.current = 0;
+      setReplayKey((k) => k + 1);
+    }, LEAVE_MS);
+  }, [reduce, loop]);
 
   useEffect(() => {
     const el = ref.current;
@@ -58,6 +72,7 @@ export function useClock(total: number, opts: { loop?: boolean; hold?: number; r
 
   useEffect(() => {
     elapsed.current = 0;
+    finished.current = false;
     setLeaving(false);
     if (reduce) {
       setT(total);
@@ -78,7 +93,10 @@ export function useClock(total: number, opts: { loop?: boolean; hold?: number; r
           setT(Math.min(e, total));
           setLive(e < total);
           setLeaving(loop && e >= cycle - LEAVE_MS);
-          if (!loop && elapsed.current >= total) return;
+          if (!loop && elapsed.current >= total) {
+            finished.current = true;
+            return;
+          }
         } else {
           setLive(false);
         }
@@ -90,7 +108,9 @@ export function useClock(total: number, opts: { loop?: boolean; hold?: number; r
       cancelAnimationFrame(raf);
       setLive(false);
     };
-  }, [total, loop, hold, reduce, runKey]);
+  }, [total, loop, hold, reduce, runKey, replayKey]);
 
-  return { ref, t, live, leaving, reduce: !!reduce };
+  useEffect(() => () => window.clearTimeout(fading.current), []);
+
+  return { ref, t, live, leaving, replay, reduce: !!reduce };
 }
