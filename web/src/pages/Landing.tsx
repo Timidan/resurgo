@@ -95,6 +95,14 @@ function Hero({ data }: { data: LandingData }) {
           <div className="mt-8 max-w-xl">
             <p className="mb-2 text-sm text-muted-foreground">or run it yourself:</p>
             <CommandChip command={cmd} />
+            <p className="mt-2 text-sm">
+              <a
+                href="https://github.com/Timidan/resurgo#run-it-yourself"
+                className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                What you need to run it
+              </a>
+            </p>
           </div>
         )}
         <section className="mt-12" aria-label="Built with">
