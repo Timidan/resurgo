@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimIcon, type IconName } from "@/components/art";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import AIReasoning from "@/components/smoothui/ai-reasoning";
 import { LiveTiles } from "@/components/LiveTiles";
 import { RepoChat } from "@/components/RepoChat";
@@ -235,7 +236,9 @@ function OpenARun({ data }: { data: LandingData }) {
                     ))}
                   </pre>
                 ) : (
-                  <p className="mt-5 flex-1 text-sm text-muted-foreground">No fix was recorded for this run.</p>
+                  <p className="mt-5 flex-1 text-sm text-muted-foreground">
+                    {r.fix_kind ? "Open the run to read the patch." : "No fix was recorded for this run."}
+                  </p>
                 )}
                 <p className="mt-5 text-sm font-semibold underline-offset-4 group-hover:underline">Open the run →</p>
               </Link>
@@ -436,21 +439,25 @@ function Closing({ data }: { data: LandingData }) {
   );
 }
 
+const Safe = ({ label, children }: { label: string; children: ReactNode }) => (
+  <ErrorBoundary label={label}>{children}</ErrorBoundary>
+);
+
 export default function Landing() {
   const data = useLandingData();
   return (
     <main>
-      <Hero data={data} />
-      <LiveTiles runs={data.latest} />
-      <RepoChat latest={data.latest} />
-      <Steps data={data} />
-      <Projects data={data} />
-      <OpenARun data={data} />
-      <Problem data={data} />
-      <Solution data={data} />
-      <Artifacts data={data} />
+      <Safe label="The hero"><Hero data={data} /></Safe>
+      <Safe label="The repository tiles"><LiveTiles runs={data.latest} /></Safe>
+      <Safe label="The repository chat"><RepoChat latest={data.latest} /></Safe>
+      <Safe label="The three steps"><Steps data={data} /></Safe>
+      <Safe label="The project list"><Projects data={data} /></Safe>
+      <Safe label="The run gallery"><OpenARun data={data} /></Safe>
+      <Safe label="The problem section"><Problem data={data} /></Safe>
+      <Safe label="The solution section"><Solution data={data} /></Safe>
+      <Safe label="The run artifacts"><Artifacts data={data} /></Safe>
       <Toolchains />
-      <Closing data={data} />
+      <Safe label="The run history"><Closing data={data} /></Safe>
     </main>
   );
 }

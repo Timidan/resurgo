@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { BackgroundArt } from "@/components/art";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LIFT_EVENT } from "@/lib/beat";
 import { useTheme } from "@/lib/theme";
@@ -90,6 +91,7 @@ export default function App() {
       <Header />
       <div id="main">
         <RouteStage>
+        <ErrorBoundary label="This page" page>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/runs" element={<Runs />} />
@@ -99,6 +101,7 @@ export default function App() {
             element={<main className="mx-auto max-w-3xl px-6 py-24"><h1 className="text-4xl font-semibold">Page not found</h1><p className="mt-4"><Link className="underline" to="/">Back to the start</Link></p></main>}
           />
         </Routes>
+        </ErrorBoundary>
         </RouteStage>
       </div>
       <Footer />
