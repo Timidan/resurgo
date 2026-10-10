@@ -1,0 +1,48 @@
+{
+  "set": "dev",
+  "repos": [
+    {
+      "repo": "Timidan/rinne",
+      "branch": "master",
+      "sha": "5c3370f9a736",
+      "role": "Development"
+    },
+    {
+      "repo": "Timidan/sentry-somnia",
+      "branch": "main",
+      "sha": "e1875a06dde6",
+      "role": "Development"
+    },
+    {
+      "repo": "Timidan/agent-arena",
+      "branch": "main",
+      "sha": "f6fc3243ac98",
+      "role": "Development",
+      "path": "commentator"
+    },
+    {
+      "repo": "buqiyuan/electron-vite-monorepo",
+      "branch": "main",
+      "sha": "6ead2579915d",
+      "role": "Development"
+    },
+    {
+      "repo": "chroxify/feedbase",
+      "branch": "main",
+      "sha": "18dca32a923e",
+      "role": "Development"
+    },
+    {
+      "repo": "Timidan/NFTLIL",
+      "branch": "master",
+      "sha": "b5ad8da536b6",
+      "role": "Development"
+    },
+    {
+      "repo": "sharkdp/hexyl",
+      "branch": "master",
+      "sha": "6ecc29b9c8c8",
+      "role": "Development"
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "set": "heldout",
+  "repos": [
+    {
+      "repo": "Timidan/hexdocs",
+      "branch": "main",
+      "sha": "dd201d3b8015",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/wrenchless",
+      "branch": "main",
+      "sha": "5968f553cb01",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/gentether",
+      "branch": "main",
+      "sha": "cdcc62fc3911",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/proof-of-regret",
+      "branch": "main",
+      "sha": "a0f6a27612e4",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/agentpay-trust-pass",
+      "branch": "main",
+      "sha": "01931a4e3b13",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/nimdrops",
+      "branch": "main",
+      "sha": "84b935473ab7",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/findling",
+      "branch": "main",
+      "sha": "234bccb7e025",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/overcode",
+      "branch": "main",
+      "sha": "061a62d7a1fa",
+      "role": "Held-out: yours, Node"
+    },
+    {
+      "repo": "Timidan/Staking",
+      "branch": "master",
+      "sha": "592be12a6e66",
+      "role": "Held-out: yours, Foundry"
+    },
+    {
+      "repo": "Timidan/Foundry-Hardhat-Diamonds",
+      "branch": "master",
+      "sha": "e9fdadc94d35",
+      "role": "Held-out: yours, Foundry"
+    },
+    {
+      "repo": "Timidan/LiquidityHelper",
+      "branch": "master",
+      "sha": "d048a320164a",
+      "role": "Held-out: yours, Foundry"
+    },
+    {
+      "repo": "Timidan/dist-x",
+      "branch": "master",
+      "sha": "c629c6c7bbd4",
+      "role": "Held-out: yours, Rust"
+    },
+    {
+      "repo": "midday-ai/packrun",
+      "branch": "main",
+      "sha": "fe5a8c497bdd",
+      "role": "Held-out: outside monorepo"
+    },
+    {
+      "repo": "nextify-limited/saasfly",
+      "branch": "main",
+      "sha": "49f7e28f69ea",
+      "role": "Held-out: outside monorepo"
+    },
+    {
+      "repo": "hop-protocol/hop",
+      "branch": "develop",
+      "sha": "3ae90badbed5",
+      "role": "Held-out: outside monorepo"
+    },
+    {
+      "repo": "panoratech/Panora",
+      "branch": "main",
+      "sha": "38eda443ed91",
+      "role": "Held-out: outside monorepo"
+    },
+    {
+      "repo": "rairprotocol/rair-dapp",
+      "branch": "main",
+      "sha": "0afccca0bd38",
+      "role": "Held-out: outside monorepo"
+    },
+    {
+      "repo": "keyshade-xyz/keyshade",
+      "branch": "develop",
+      "sha": "ef7e9e21a6d9",
+      "role": "Held-out: outside monorepo"
+    },
+    {
+      "repo": "SunWeb3Sec/DeFiVulnLabs",
+      "branch": "main",
+      "sha": "f61f6ee5c3f8",
+      "role": "Held-out: outside Foundry"
+    },
+    {
+      "repo": "nomoixyz/vulcan",
+      "branch": "main",
+      "sha": "1257e0e9db6d",
+      "role": "Held-out: outside Foundry"
+    },
+    {
+      "repo": "defi-wonderland/solidity-foundry-boilerplate",
+      "branch": "dev",
+      "sha": "504ada8dfa8b",
+      "role": "Held-out: outside Foundry"
+    },
+    {
+      "repo": "ekzhang/bore",
+      "branch": "main",
+      "sha": "00a735a89917",
+      "role": "Held-out: outside Rust"
+    },
+    {
+      "repo": "BurntSushi/xsv",
+      "branch": "master",
+      "sha": "f4304660231d",
+      "role": "Held-out: outside Rust"
+    },
+    {
+      "repo": "sigoden/aichat",
+      "branch": "main",
+      "sha": "82976d349ad9",
+      "role": "Held-out: outside Rust"
+    }
+  ]
+}
