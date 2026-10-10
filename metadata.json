@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4KDTHTWMHY2RZ55YVCDXZC4",
+  "strategy": "manual-commit",
+  "branch": "web",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "web/check-render.mjs",
+    "web/src/components/Story.tsx",
+    "web/src/lib/stream.ts",
+    "web/src/pages/Landing.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 36,
+    "cache_creation_tokens": 49056,
+    "cache_read_tokens": 1134640,
+    "output_tokens": 10467,
+    "api_call_count": 18
+  }
+}

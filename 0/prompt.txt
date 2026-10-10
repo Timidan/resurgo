@@ -1,0 +1,26 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read docs/ANIMATION.md, web/src/lib/stream.ts (`useClock`) and web/src/components/Story.tsx first. This is a small change; commit it in one or two commits.
+
+The owner wants the homepage terminal replay to play once and stay on its final frame. It should replay only when a mouse hovers over it.
+
+1. `pages/Landing.tsx` no longer passes `loop` to the hero `<Story>`. That edit is already in the working tree, uncommitted. Keep it.
+2. Add replay on hover to that Story.
+   - When a mouse pointer enters the replay window and the replay has finished, play it again from the start, once, then hold the final frame again.
+   - React only to `pointerType` "mouse", so a tap on a phone doesn't restart it.
+   - Hovering while it is still playing does nothing.
+   - Moving the mouse in and out must not restart it over and over: it restarts only from the finished state.
+3. Follow docs/ANIMATION.md, which is a review against Lasseter's principles. Don't jump-cut to an empty window. Reuse the existing leave fade (`LEAVE_MS` / `leaving`) before the restart, so the old frame eases out and the new run eases in with the same easing and timing windows as now.
+4. With reduced motion, there is no replay and the final frame stays.
+5. Keep the change inside `useClock` and `Story`, behind one small API: for example a `replay()` returned by `useClock`, or a `replayOnHover` prop on `Story`. Don't touch any other animation; the live status tiles keep cycling.
+6. Check your work.
+   - Run `npm run build`.
+   - In the render-check script, or a short headless script, confirm three things:
+     - when the replay finishes, the final frame is still there about 6 seconds later, with no restart;
+     - a synthetic mouse `pointerenter` after it finishes restarts it;
+     - a `pointerenter` with `pointerType` "touch" doesn't restart it.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- No tool or AI attribution in commits.
+- Finish with a short report.
