@@ -3383,12 +3383,16 @@ name = "resurgo"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "httpx" },
+    { name = "langgraph" },
     { name = "neatlogs", extra = ["langchain"] },
     { name = "python-dotenv" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "langgraph", specifier = ">=1.2.14" },
     { name = "neatlogs", extras = ["langchain"], specifier = ">=1.4.26" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
 ]
