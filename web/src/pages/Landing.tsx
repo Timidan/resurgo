@@ -34,7 +34,7 @@ function CommandChip({ command }: { command: string }) {
   return (
     <div className="flex max-w-full items-center gap-2 rounded-lg border border-border bg-terminal py-1.5 pl-4 pr-1.5 font-mono text-sm text-terminal-ink">
       <span aria-hidden className="text-muted-foreground">$</span>
-      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-1">{command}</code>
+      <code title={command} className="min-w-0 flex-1 truncate py-1">{command}</code>
       <button
         type="button"
         onClick={() => {
