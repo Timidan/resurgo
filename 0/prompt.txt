@@ -1,0 +1,39 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read web/NOTES.md, docs/LANDING.md and docs/ANIMATION.md first. Keep changes small and commit in small steps.
+
+1. **Use logos instead of product names, the way checklyhq.com does.** The official logo files are already in `web/public/logos/` (uncommitted). `web/public/logos/SOURCES.md` lists where each came from and how each may be coloured. Commit them.
+   - What Checkly does, measured on their site today:
+     - A small uppercase label with wide tracking, such as "WORKS WITH" at about 12px and 0.12em letter-spacing.
+     - Then a row of logos in place of the names, about 14 to 16px tall, with 16px gaps.
+     - Colourful logos keep their brand colour. Black-and-white logos are drawn in one colour that suits the theme.
+     - Integration grids use 24px icons.
+   - Replace names with logos in these places:
+     - **The stack strip**, the `names = ["Node", "pnpm", "npm", "Yarn", "Foundry", "Cargo", "Docker", "GitHub"]` list in pages/Landing.tsx. Show one logo per tool, with Cargo shown as the Rust logo. Don't add tools Resurgo doesn't support today. Bun arrives with agent v2, so leave it out for now but keep its file.
+     - **The "Built on neatlogs tracing and Entire checkpoints" line.** Put the neatlogs wordmark and the Entire logo inline, sized to the text and aligned on the baseline. Don't add cfo.ai until the business plan exists, but keep its file.
+     - **The "Install on GitHub" buttons.** Put the GitHub mark before the label.
+   - Monochrome logos (neatlogs, Entire, cfo.ai, Foundry, GitHub, Rust, Bun) must follow the theme, so render them in `currentColor`. Use a CSS mask for the raster files (`neatlogs-wordmark.webp`, `foundry-mark.png`), and inline SVG or a mask for the SVGs.
+   - Colour logos (Node, pnpm, npm, Yarn, Docker) use the brand colours listed in SOURCES.md, in both themes.
+   - Accessibility:
+     - Every logo carries the product name, as `alt` or as `role="img"` with `aria-label`.
+     - A logo that replaces a word in a sentence must still read as that word to a screen reader.
+     - Add a `title` tooltip with the name.
+   - One small `Logo` component is enough. Add no new library.
+2. **Fix copy that is no longer true.** The GitHub App, "Resurgo Agent", now exists and opens pull requests for verified fixes.
+   - Update every place that says the App isn't built yet or is "planned": the closing section ("the next thing to build"), the chat reply, the "Planned flow" label, and the agent-view text in `api/main.py`.
+   - Say only what is true. You install it on the repos you pick. It opens a pull request only for a fix that passed in a clean container. Code changes wait for your approval.
+   - Don't promise schedules or anything else that isn't built.
+3. **Add a third status for code fixes.** Agent v2 will produce records where the fix passed in the clean container but changes code, so it waits for the owner's approval. In those records `verifier.passed` is true and `needs_approval` is true.
+   - Today `_verified` in `api/main.py` would show these as "Runs · verified clean".
+   - Add a distinct status for them, "Fix verified · awaiting approval", in the API summary, the gallery and the run view. Style it so it can't be mistaken for a clean pass.
+   - A record with `needs_approval` true and a failed or missing verifier stays "Broken", as it is today.
+4. **Check your work.**
+   - Run `npm run build`, then `web/check-render.mjs` at 420 and 1280px, in light and dark.
+   - Extend the check so it also confirms two things: the stack strip and the "Built on" line render logos with accessible names, and nothing overflows at 420px.
+   - Take close-up screenshots of the logo strip and the "Built on" line in both themes, and look at them yourself. Every logo must be visible, crisp and evenly sized.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report: what changed, the check results with screenshot paths, and anything you weren't sure about.
