@@ -62,6 +62,27 @@ Timidan (solo, with coding agents).
 
 - Pull-request step: `uv run python -m resurgo.pr <run dir> [--dry-run]` (`resurgo/pr.py`). Guards (`refusal()`): the verifier passed, `fix.patch` is non-empty, the run's commit is still the default-branch head (the 12-character SHA is resolved to the full one through the API), and no PR from `resurgo/fix-<run_id>` exists in any state. `--dry-run` uses only the public API and prints the title and body. A real run signs an App JWT with `openssl`, finds the installation (404 means the App is not installed, so it refuses), gets a one-repo installation token, applies exactly `fix.patch` on the fetched commit, pushes `resurgo/fix-<run_id>` through an env-var credential helper, opens the PR and writes `pr` into `result.json`. Dry-run checked on the agent-arena and rinne records; the real path has never run, because the App key is not on this machine.
 
+- Agent v2 (`__version__` 0.2.0). Why: the v1 held-out sweep fixed none of the repos that were broken, and the run records show three causes. (1) 6 of 9 broken repos stopped at the model's first "code" proposal, because v1 never applied code fixes (a Foundry test on the removed `testFail*` convention, a turbo.json build-order fix, a package.json dependency change). (2) 2 repos are Bun workspaces with `workspace:*` dependencies and were installed with npm, which rejects the protocol. (3) pnpm repos with `lockfileVersion: '9.0'` and no `packageManager` got the latest pnpm (12), which fails on ERR_PNPM_IGNORED_BUILDS and ignores `pnpm.*` settings; the model then burned attempts migrating settings. What changed:
+  - Code fixes are verified, then held. A "code" proposal, or a config proposal that touches a non-config package.json key or a file outside `CONFIG_NAMES`, is applied in the agent container and re-run like a config fix; the attempt is `needs_approval: true` with `approval_reason`, and the record carries `needs_approval`. A lockfile with model-written content or invalid JSON is still rejected as malformed. `pr.refusal()` refuses such records ("this fix changes code and waits for the owner's approval"). The sweep summary splits verified fixes into "PR-ready (config)" and "awaiting approval (code)", plus "no fix needed". The SYSTEM prompt now says this, still prefers config, and forbids passing a step by removing, skipping or weakening a test, build or check.
+  - Bun: detected from `bun.lock`, `bun.lockb` or a `packageManager: bun@` field (the field wins over another lockfile). Installed in the toolchain step with `npm install --prefix $HOME/.pm bun@<declared or 1>` (no root); `bun install --frozen-lockfile` / `bun install`; scripts run with `bun run`. The version is only passed to the shell if it is a plain release number.
+  - pnpm lockfile 9.0 now maps to pnpm 9.15.9 when there is no `packageManager` field. Caveat: pnpm 10 also writes 9.0, so a repo written by pnpm 10 gets pnpm 9 as well.
+  - `trace_id` (the neatlogs trace id of the run's root span, 32 hex characters) is saved in result.json. It comes from the span yielded by `neatlogs.trace()` (`get_span_context().trace_id`); OpenTelemetry's global current span is empty because neatlogs uses its own provider, so that route does not work. Checked with a dummy key (valid id, child spans share it) and on a real run.
+  - Pruning: after a pass with more than one applied attempt, files only the non-passing attempts touched are reverted, the pipeline re-runs once, and the smaller patch is kept only if it passes; recorded as `agent.pruned` (`files`, `kept`). The verifier checks the final patch. Not yet exercised: no dev run passed after more than one applied attempt, so this path has never run, in a container or in a unit test.
+- v2 development results (sweep `v2-dev`; v1 numbers are from the 2b/2c tables above, so v1 and v2 differ in time caps for sentry-somnia):
+
+| Repo | v1 | v2 | v2 time | v2 model calls | v2 notes |
+| --- | --- | --- | --- | --- | --- |
+| Timidan/rinne | runs, 433s, 3 calls | runs | 374s (345s standalone) | 0 | pnpm 9.15.9 rule fixes install on the first attempt |
+| Timidan/sentry-somnia | broken (build, 15 min cap), 0 calls | broken (test), 1 call | 1619s (1596s standalone) | 1 (0 standalone) | build now passes; `packages/sentry-react` vitest hits its 5000 ms timeout; the 25-minute budget was spent by two 5-15 minute builds before the model could diagnose in the standalone run |
+| Timidan/agent-arena `commentator` | broken (serve), 2 calls, code held | broken (serve), code verified | 861s | 4 | two code fixes (package.json dependency, start script) applied and re-run, held for approval; still failing at serve after the 4-attempt budget |
+| buqiyuan/electron-vite-monorepo | runs_with_gaps, 1 call | broken | 299s | 1 | regression: the model proposed a code change whose `apps/electron/package.json` was not valid JSON, so it was rejected as malformed; v1 got a config `.npmrc` fix from the same prompt |
+| chroxify/feedbase | runs_with_gaps, 2286s | runs_with_gaps | 1971s | 0 | no test script |
+| Timidan/NFTLIL | runs | runs | 191s | 0 | |
+| sharkdp/hexyl | runs | runs | 408s | 0 | |
+
+  Sweep totals: 7 repos, 4 verified (3 runs, 1 runs_with_gaps), median 408s, 6 model calls; verified PR-ready (config) 1, awaiting approval (code) 0, no fix needed 3. The v2 changes show up on the repos they target: rinne is fixed by a rule with no model call, and code fixes are now verified rather than abandoned. They did not turn any broken dev repo into a verified one, and electron-vite-monorepo got worse through model variance, not through a changed rule.
+- Not done: a Bun workspace repo for the dev set. The session could not search GitHub (network lookups from the shell and web search needed approval that was not available), so no repo was pinned, and the Bun install path has not run on a real repo. The held-out sweep was not run.
+
 ## Demo
 Not available yet.
 
@@ -69,7 +90,9 @@ Not available yet.
 - Foundry and Rust each have one real run that passed without a fix; the repair loop has not run on either.
 - A `start` script that opens no port passes as a "service" after 30 seconds alive, which is a weaker proof than GET /; a web app that takes longer than 30 seconds to open its port would be recorded as a service.
 - Monorepos get the library proof bar (install, build, test); their apps are not started.
-- The patch is cumulative: edits from failed attempts stay in it. Reverting them before the final diff is not done.
+- The patch is cumulative unless pruning (v2) applies: it only reverts files that failed attempts alone touched, and it has not run in a container yet.
+- Bun support has never run on a real repo.
+- A rule that fires after a late test failure re-runs install and build, which can spend the whole budget before the model sees the failure (sentry-somnia).
 - Reruns always start from install. Lockfile regeneration (an empty-content lockfile entry) and npm pins are implemented but have not been exercised on a real repo.
 - The 25-minute Node budget covers the fix loop, not the verifier. Many per-file `docker exec` calls on the remote host made runs slow before reads were batched.
 - The `resurgo-runs` network is created if missing and left in place after runs.
