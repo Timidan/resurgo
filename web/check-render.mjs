@@ -12,7 +12,8 @@ const outDir = process.argv[4] ?? join(tmpdir(), "resurgo-shots");
 mkdirSync(outDir, { recursive: true });
 
 const pages = [["landing", "/"], ["runs", "/runs"], ["run", `/runs/${runId}`]];
-const themes = [["light", 0], ["dark", 1]];
+// Blink's preferredColorScheme enum: 0 is dark, 1 is light.
+const themes = [["dark", 0], ["light", 1]];
 
 const chromium = (args) =>
   spawnSync("chromium", ["--headless=new", "--disable-gpu", "--no-sandbox", "--virtual-time-budget=6000", ...args], {

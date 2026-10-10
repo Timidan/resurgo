@@ -86,3 +86,14 @@ Not done / limits:
 - Animation mid-states were not captured frame by frame, only the final state.
 - No GitHub App flow, checkout, or projects view with "Check now".
 - Landing section 8 (product tabs) is merged into section 7, as the plan allows.
+
+## Visual review fixes (browser pass, 10 Oct)
+
+- **Logo**: `App.tsx` already picks `logo-wordmark-light.svg` / `-dark.svg` from the theme, and it is the only place the wordmark is used (`index.html` links the favicon and og card only). Checked visible in both themes at 1280 px and 420 px.
+- **Copy chip**: the command was `overflow-x-auto`, which gave a scrollbar on a long command. It is now `truncate` (ellipsis, full text in `title`). The copy button still writes the whole command.
+- **Run status**: the rule lives in `api/main.py` only. A run is verified when the verifier ran at least one step and `verifier.passed` is true or every step exited 0; a legacy `fixed`/`fail` is then judged by those steps. "Unverified" is only for a record with no verifier steps at all. `20261010T101804Z-5c3370f` (clone, toolchain, detect, install all exit 0, `passed: true`) is verified. `20261010T093642Z-5c3370f` is not unverified: it has four verifier steps and the install exited 1 with `passed: false`, so it is Broken.
+- **Stale API**: the process on 127.0.0.1:8787 predates these API changes (its detail summary has no `verified` and returns `status: "fixed"`). Restart it to see the new status; the web build does not decide status.
+- **Replay run**: sits in the "What actually ran" header row (flex, wraps under the heading on narrow widths).
+- **check-render.mjs**: the theme labels were swapped (Blink's `preferredColorScheme` 0 is dark, 1 is light), so the "light" screenshots were dark. Fixed.
+- **Not verified**: the status change itself in a browser, because a current API could not be started in the session that made it (server and Python execution needed an approval it could not get). The logic was checked by reading `_verified` / `_status` against both records fetched from the running API.
+- **Seen, not fixed**: at 420 px the landing page has a page-level horizontal scrollbar, and long step output in the run view shows inner horizontal scrollbars.
