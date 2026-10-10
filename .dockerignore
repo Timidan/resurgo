@@ -1,0 +1,16 @@
+# Allowlist: the image build needs api/, web/ and the two lock inputs, nothing else.
+*
+!api/
+!web/
+!pyproject.toml
+!uv.lock
+
+# Never in the image, wherever they sit.
+**/.env
+**/.env.*
+**/.entire
+**/.git
+**/node_modules
+**/__pycache__
+runs
+web/dist

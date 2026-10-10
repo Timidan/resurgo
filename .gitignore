@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 runs/
 *.log
+web/tsconfig.tsbuildinfo

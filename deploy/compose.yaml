@@ -1,0 +1,16 @@
+# One container behind the existing reverse proxy; no ports are published.
+# Set RESURGO_RUNS_DIR to the host directory that holds the run records.
+services:
+  resurgo-web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ${RESURGO_RUNS_DIR:?set RESURGO_RUNS_DIR to the runs directory}:/runs:ro
+    networks:
+      - public_proxy
+
+networks:
+  public_proxy:
+    external: true
