@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b8rxjxije</task-id>
+<tool-use-id>toolu_01CiGBsoUhpatyk4Rma2ZPut</tool-use-id>
+<output-file>/tmp/claude-1000/-home-timidan-Desktop-resurgo-web/121294a6-fac6-451c-bdf7-f03a0ae6dfbe/tasks/b8rxjxije.output</output-file>
+<status>completed</status>
+<summary>Background command "node web/check-render.mjs 2&gt;&amp;1 | tail -30" completed (exit code 0)</summary>
+</task-notification>
