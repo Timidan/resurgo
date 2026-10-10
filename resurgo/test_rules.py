@@ -8,7 +8,8 @@ def test_rules():
     assert node_major({".nvmrc": "v20.11.0\n"})[0] == 20
     # lockfile format picks the package manager when packageManager is absent
     assert package_manager({"pnpm-lock.yaml": "lockfileVersion: '6.0'\n"})[:2] == ("pnpm", "8.15.9")
-    assert package_manager({"pnpm-lock.yaml": "lockfileVersion: '9.0'\n"}) is None
+    assert package_manager({"pnpm-lock.yaml": "lockfileVersion: '9.0'\n"})[:2] == ("pnpm", "9.15.9")
+    assert package_manager({"pnpm-lock.yaml": "lockfileVersion: '10.0'\n"}) is None
     assert package_manager({"yarn.lock": "# yarn lockfile v1\n"})[:2] == ("yarn", "1.22.22")
     assert package_manager({"yarn.lock": "__metadata:\n  version: 8\n"})[:2] == ("yarn", "4.9.2")
     assert package_manager({"package-lock.json": '{"lockfileVersion": 1}'})[:2] == ("npm", "6.14.18")

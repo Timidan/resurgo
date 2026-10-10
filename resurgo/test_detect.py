@@ -1,6 +1,7 @@
 import json
 
 from resurgo.project import detect_type, dummy_env, needs_secret, rustup_install
+from resurgo.rules import bun_version
 from resurgo.run import detect_pm
 
 
@@ -9,6 +10,13 @@ def test_detect_pm():
     assert detect_pm(["yarn.lock"]) == "yarn"
     assert detect_pm(["package-lock.json"]) == "npm"
     assert detect_pm(["package.json"]) is None
+    # Bun: a lockfile or the packageManager field, ahead of a stray npm lockfile; the version
+    # goes into a shell command, so only plain release numbers pass
+    assert detect_pm({"bun.lockb": "", "package-lock.json": ""}) == "bun"
+    assert detect_pm({"package.json": '{"packageManager": "bun@1.2.3"}'}) == "bun"
+    assert bun_version({"package.json": '{"packageManager": "bun@1.2.3+sha512.ab"}'}) == "1.2.3"
+    assert bun_version({"package.json": '{"packageManager": "bun@1; id"}'}) == "1"
+    assert bun_version({"bun.lock": ""}) == "1" and bun_version({"package-lock.json": ""}) is None
 
 
 def pkg(**kw):

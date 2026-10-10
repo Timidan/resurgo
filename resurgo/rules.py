@@ -18,7 +18,8 @@ PM_VERSIONS = {
     "yarn": {1: "1.22.22", 2: "2.4.3", 3: "3.8.7", 4: "4.9.2"},
     "npm": {6: "6.14.18", 7: "7.24.2", 8: "8.19.4", 9: "9.9.4", 10: "10.9.2"},
 }
-LOCKFILES = [("pnpm-lock.yaml", "pnpm"), ("yarn.lock", "yarn"), ("package-lock.json", "npm")]
+LOCKFILES = [("pnpm-lock.yaml", "pnpm"), ("yarn.lock", "yarn"), ("package-lock.json", "npm"),
+             ("bun.lock", "bun"), ("bun.lockb", "bun")]
 # Files that rules read; the caller supplies their contents (None when absent).
 RULE_FILES = ["package.json", ".nvmrc", ".node-version"] + [n for n, _ in LOCKFILES]
 
@@ -110,6 +111,21 @@ def node_major(files):
     return (major, f"package.json volta.node {volta!r}") if major else (None, None)
 
 
+def bun_version(files):
+    """The Bun to install when the repo uses Bun (a bun lockfile or a `packageManager: bun@...`
+    field), else None. The declared version if it is a plain release number, otherwise "1"
+    (the latest 1.x). It ends up in a shell command, so nothing else is passed through."""
+    try:
+        pkg = json.loads(files.get("package.json") or "{}")
+    except ValueError:
+        pkg = {}
+    declared = pkg.get("packageManager") if isinstance(pkg, dict) else None
+    if isinstance(declared, str) and declared.startswith("bun@"):
+        ver = declared[4:].split("+")[0]
+        return ver if re.fullmatch(r"\d+(\.\d+){0,2}", ver) else "1"
+    return "1" if "bun.lock" in files or "bun.lockb" in files else None
+
+
 def package_manager(files):
     """(name, exact_version, source) from the packageManager field, else the lockfile format."""
     try:
@@ -125,7 +141,8 @@ def package_manager(files):
         m = re.search(r"lockfileVersion:\s*['\"]?(\d+)\.(\d+)", text)
         if m:
             v = (int(m.group(1)), int(m.group(2)))
-            major = {(5, 0): 5, (5, 1): 5, (5, 2): 5, (5, 3): 6, (5, 4): 7, (6, 0): 8, (6, 1): 8}.get(v)
+            major = {(5, 0): 5, (5, 1): 5, (5, 2): 5, (5, 3): 6, (5, 4): 7, (6, 0): 8, (6, 1): 8,
+                     (9, 0): 9}.get(v)
             if major:
                 return "pnpm", PM_VERSIONS["pnpm"][major], f"pnpm-lock.yaml lockfileVersion {v[0]}.{v[1]}"
         return None

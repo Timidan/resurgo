@@ -23,7 +23,7 @@ from resurgo.agent import build_graph
 from resurgo.gateway import GatewayChat
 from resurgo.project import (BUILD_NODE_OPTIONS, CAP_MINUTES, FOUNDRY_RELEASE, MANIFESTS, detect_type, dummy_env, family,
                              has_real_test, needs_secret, rust_version, rustup_install, scripts)
-from resurgo.rules import BASELINE_NODE, LOCKFILES, RULE_FILES, node_major, parse_major
+from resurgo.rules import BASELINE_NODE, LOCKFILES, RULE_FILES, bun_version, node_major, parse_major
 
 BASE_IMAGE = f"node:{BASELINE_NODE}-bookworm"   # clones and classifies; replaced if the type needs another
 NETWORK = "resurgo-runs"
@@ -36,7 +36,8 @@ LIMITS = ["--cpus", "2", "--memory", "6g", "--pids-limit", "512",
 INSTALL = {"pnpm": ("pnpm install --frozen-lockfile", "pnpm install --no-frozen-lockfile"),
            "yarn": ("yarn install --frozen-lockfile", "yarn install"),
            "yarn-berry": ("yarn install --immutable", "yarn install --no-immutable"),
-           "npm": ("npm ci", "npm install")}
+           "npm": ("npm ci", "npm install"),
+           "bun": ("bun install --frozen-lockfile", "bun install")}
 ENV_PREFIX = ('export PATH="$HOME/.pm/node_modules/.bin:$HOME/.node/node_modules/.bin:'
               '$HOME/.local/bin:$HOME/.foundry/bin:/usr/local/cargo/bin:$PATH" '
               'COREPACK_ENABLE_DOWNLOAD_PROMPT=0 CARGO_HOME=$HOME/.cargo; ')
@@ -44,6 +45,10 @@ ENV_PREFIX = ('export PATH="$HOME/.pm/node_modules/.bin:$HOME/.node/node_modules
 
 
 def detect_pm(files):
+    """Package manager from the lockfile names present; a Bun lockfile or a packageManager:
+    bun@ field (`files` as a dict then) counts as Bun and wins over any other lockfile."""
+    if isinstance(files, dict) and bun_version(files):
+        return "bun"
     for name, pm in LOCKFILES:
         if name in files:
             return pm
@@ -279,10 +284,16 @@ class Box:
             declared = json.loads(files.get("package.json") or "{}").get("packageManager", "")
         except ValueError:
             declared = ""
+        pins = []                 # pinned into $HOME/.pm, which is on PATH (see ENV_PREFIX)
         if declared.startswith("npm@"):
-            cmd += f" && npm install --prefix $HOME/.pm npm@{declared[4:].split('+')[0]}"
-        else:
-            cmd += " && rm -rf $HOME/.pm"
+            pins.append(f"npm@{declared[4:].split('+')[0]}")
+        bun = bun_version(files)
+        if bun:
+            pins.append(f"bun@{bun}")
+        cmd += (f" && npm install --prefix $HOME/.pm {' '.join(pins)}" if pins
+                else " && rm -rf $HOME/.pm")
+        if bun:
+            cmd += " && bun --version"
         if self.forge:
             url = ("https://github.com/foundry-rs/foundry/releases/download/"
                    f"{FOUNDRY_RELEASE}/foundry_{FOUNDRY_RELEASE}_linux_$(dpkg --print-architecture).tar.gz")
@@ -302,12 +313,12 @@ class Box:
         except ValueError:
             pkg = {}
         self.has_build = "build" in (pkg.get("scripts") or {})
-        if not found:
+        lock = next((n for n, pm in LOCKFILES if pm == found and n in files), None)
+        if not lock:      # no lockfile for the detected manager (Bun by packageManager field only)
             declared = str(pkg.get("packageManager", "")).split("@")[0]
-            self.pm = declared if declared in ("pnpm", "yarn") else "npm"
+            self.pm = found or (declared if declared in ("pnpm", "yarn") else "npm")
             self.install_dir, self.frozen = self.proj, False
             return
-        lock = {"pnpm": "pnpm-lock.yaml", "yarn": "yarn.lock", "npm": "package-lock.json"}[found]
         self.pm = found
         if found == "yarn" and "__metadata:" in files[lock]:
             self.pm = "yarn-berry"
@@ -327,7 +338,8 @@ class Box:
     def serve_cmd(self, pm, files):
         """Start the app, wait for a new port, GET /, stop the server (probe.js does the check)."""
         s = scripts(files)
-        start = f"{pm} run dev" if "dev" in s and "start" not in s else f"{pm} start"
+        start = (f"{pm} run dev" if "dev" in s and "start" not in s
+                 else f"{pm} run start" if pm == "bun" else f"{pm} start")   # Bun runs scripts with `bun run`
         pid, log = "$HOME/server.pid", "$HOME/server.log"
         return (f"cd {self.proj} && (PORT=3000 HOST=0.0.0.0 setsid {start} > {log} 2>&1 & echo $! > {pid}); "
                 f"node $HOME/probe.js $(cat {pid}) {log} 180; rc=$?; "
