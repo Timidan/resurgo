@@ -99,7 +99,8 @@ def step(name, container, cmd, timeout, home=NODE_HOME, user="1000:1000"):
 
 ENTIRE_BIN = "/home/agentops/.local/bin/entire"   # on the Docker host; RESURGO_ENTIRE_BIN overrides
 GRAPH_BYTES, GRAPH_TIMEOUT, GRAPH_TOP_K = 12_000, 120, 5
-GRAPH_NOISE = ("Index:", "Coverage:", "- warning")
+GRAPH_PLUGIN_BIN = "~/.local/share/entire/plugins/pkg/graph/entire-graph"   # RESURGO_ENTIRE_GRAPH_BIN
+GRAPH_NOISE =("Index:", "Coverage:", "- warning")
 GRAPH_HIT = re.compile(r"^(?:\d+\.\s+)?([^\s:]+:\d+(?:-\d+)?)(?=\s|$)", re.M)
 _mounts = {}
 
@@ -165,6 +166,7 @@ class Box:
         self.last_out = ""
         self.touched = []         # repo-relative paths the agent wrote or removed
         self.cloned = False
+        self.graph_staged = None  # the entire-graph plugin was copied into the container
         self.ptype, self.why, self.cap_s = "unsupported", "", 900
         self.forge = False        # the repo has a foundry.toml, so forge is installed
         self.env_example = ""
@@ -202,6 +204,16 @@ class Box:
         self.last_out = out
         return rec["exit_code"] == 0
 
+    def stage_graph(self):
+        """Copy the entire-graph plugin executable from the machine running this process into this
+        container's PATH, once. `entire graph` is a plugin that the mounted binary alone does not
+        carry, and it is not installed on the Docker host."""
+        if self.graph_staged is None:
+            src = Path(os.environ.get("RESURGO_ENTIRE_GRAPH_BIN", GRAPH_PLUGIN_BIN)).expanduser()
+            self.graph_staged = src.is_file() and docker(
+                "cp", str(src), f"{self.container}:/usr/local/bin/entire-graph", timeout=300)[0] == 0
+        return self.graph_staged
+
     def graph_search(self, query):
         """Repository context from `entire graph search` in this container: {"query", "files",
         "bytes", "ms", "text"}, or None when it is unavailable or produced nothing."""
@@ -210,7 +222,7 @@ class Box:
         w0 = time.monotonic()
         with tool_span("entire.graph.search") as sp:
             try:
-                code, out, _ = self.raw(cmd, timeout=GRAPH_TIMEOUT)
+                code, out, _ = self.raw(cmd, timeout=GRAPH_TIMEOUT) if self.stage_graph() else (-1, "", "")
             except Exception:       # timeout, docker error: the run goes on without it
                 code, out = -1, ""
             lines = [l for l in out.splitlines() if not l.startswith(GRAPH_NOISE)]

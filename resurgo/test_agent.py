@@ -144,6 +144,7 @@ def test_graph_search_skips_silently_on_failure():
     def box_with(raw):
         box = runner.Box("c", "agent", "node:24-bookworm")
         box.raw = raw
+        box.graph_staged = True     # the plugin copy needs a real container
         return box
 
     def timeout(cmd, data=None, timeout=120):
