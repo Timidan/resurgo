@@ -140,6 +140,7 @@ class Box:
         self.forge = False        # the repo has a foundry.toml, so forge is installed
         self.env_example = ""
         self.gaps = []            # reasons a passing run still has gaps
+        self.proof = {}           # how the serve step passed: "http" (GET /) or "service" (alive)
 
     @property
     def proj(self):
@@ -371,7 +372,7 @@ class Box:
     def pipeline(self):
         """toolchain, .env, then the steps of the project type. Returns None when every step
         passed or a secret gap ended the run (see self.gaps), else {step, command, exit_code}."""
-        self.gaps = []
+        self.gaps, self.proof = [], {}
         files = self.rule_files()
         if not self.sh("toolchain", self.toolchain_cmd(files)):
             return self.failed("toolchain")
@@ -384,6 +385,8 @@ class Box:
                 self.raw('cat > "$HOME/probe.js"', PROBE)
             if not self.sh(name, cmd):
                 return self.failed(name)
+            if name == "serve":
+                self.proof["serve"] = "service" if "serve ok (service)" in self.last_out else "http"
         return None
 
 
@@ -478,7 +481,7 @@ def execute(repo, sha, subdir, root):
                            "detail": scrub(state.get("detail", "")), "package_manager": box.pm,
                            "rules_fired": state.get("rules_fired", []),
                            "attempts": state.get("attempts", []), "steps": box.steps,
-                           "gaps": box.gaps}
+                           "gaps": box.gaps, "proof": box.proof}
         record["model_calls"] = state.get("model_calls", [])
         record["needs_approval"] = status == "needs_approval"
         record["last_failure"] = state.get("failure") or None
@@ -488,7 +491,8 @@ def execute(repo, sha, subdir, root):
             vbox = open_box("verifier", run_id, repo, sha, subdir, created, patch)
             failure = vbox.pipeline() if vbox.cloned else {"step": "clone"}
             ok = failure is None
-            record["verifier"] = {"passed": ok, "steps": vbox.steps, "gaps": vbox.gaps}
+            record["verifier"] = {"passed": ok, "steps": vbox.steps, "gaps": vbox.gaps,
+                                  "proof": vbox.proof}
             if ok:
                 result = "runs_with_gaps" if vbox.gaps else "runs"
                 record["gaps"] = vbox.gaps
