@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LIFT_EVENT } from "@/lib/beat";
 import { useTheme } from "@/lib/theme";
+import { INSTALL_URL } from "@/lib/utils";
 import Landing from "@/pages/Landing";
 import RunView from "@/pages/RunView";
 import Runs from "@/pages/Runs";
@@ -59,6 +60,12 @@ function Header() {
         </Link>
         <nav aria-label="Main" className="flex items-center gap-4 sm:gap-6">
           <NavLink to="/runs" className={link}>Runs</NavLink>
+          <a
+            href={INSTALL_URL}
+            className="press inline-flex min-h-9 items-center rounded-lg border border-accent-strong bg-accent-strong px-3 text-sm font-semibold text-on-accent hover:opacity-90"
+          >
+            Install<span className="hidden sm:inline">{" on GitHub"}</span>
+          </a>
           <ThemeToggle />
         </nav>
       </div>

@@ -13,6 +13,7 @@ const outDir = process.argv[4] ?? join(tmpdir(), "resurgo-shots");
 mkdirSync(outDir, { recursive: true });
 
 const pages = [["landing", "/"], ["runs", "/runs"], ["run", `/runs/${runId}`]];
+const INSTALL_URL = "https://github.com/apps/resurgo-agent/installations/new";
 const widths = [420, 1280];
 const themes = ["light", "dark"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -109,7 +110,9 @@ for (const [name, path] of pages) {
 
       const sideways = m.scrollWidth > m.vw;
       const stepScroll = m.inner.filter((i) => i.step);
-      const good = !sideways && stepScroll.length === 0;
+      // The header and the hero each carry the install link; it must point at the app's install page.
+      const installOk = m.install.length >= (path === "/" ? 2 : 1) && m.install.every((h) => h === INSTALL_URL);
+      const good = !sideways && stepScroll.length === 0 && installOk;
       failed ||= !good;
       console.log(`${good ? "PASS" : "FAIL"} ${path} ${width}px ${theme}: scrollWidth ${m.scrollWidth}/${m.vw}, step-output scrollbars ${stepScroll.length}, install links ${m.install.length ? m.install.join(" ") : "none"}`);
       if (sideways) console.log(`  overflowing: ${m.over.join(" | ")}`);

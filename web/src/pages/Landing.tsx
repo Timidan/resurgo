@@ -11,7 +11,7 @@ import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, Mark, Reveal, StatusBadge } from "@/components/ui-bits";
 import type { RunDetail, Step } from "@/lib/api";
 import { fixLabel, fmtDur, parsePatch, statusMeta, stepOk } from "@/lib/run";
-import { cn } from "@/lib/utils";
+import { cn, INSTALL_URL } from "@/lib/utils";
 import { useLandingData, type LandingData } from "./landing-data";
 
 /** The command that reproduces the featured run, as logged in the build log. */
@@ -68,22 +68,25 @@ function Hero({ data }: { data: LandingData }) {
           Resurgo fresh-clones your repos, repairs what rotted, and proves each fix in a clean container before it opens a pull request.
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-3">
+          <a
+            href={INSTALL_URL}
+            className="press inline-flex min-h-12 items-center rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
+          >
+            Install on GitHub
+          </a>
           <Link
             to="/runs"
-            className="press inline-flex min-h-12 items-center rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
+            className="press inline-flex min-h-12 items-center rounded-lg border border-control px-5 text-base font-semibold hover:bg-muted"
           >
             See real runs
           </Link>
-          <span
-            aria-disabled="true"
-            className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-control px-5 text-base text-muted-foreground"
-          >
-            <span aria-hidden className="font-mono">◌</span> GitHub App: not live yet
-          </span>
         </div>
+        <p className="mt-4 max-w-xl text-sm text-muted-foreground">
+          Pick the repos. Resurgo rebuilds each from a fresh clone and opens a pull request only for a fix that passes in a clean container.
+        </p>
         {cmd && (
           <div className="mt-8 max-w-xl">
-            <p className="mb-2 text-sm text-muted-foreground">Reproduce the run on the right yourself:</p>
+            <p className="mb-2 text-sm text-muted-foreground">or run it yourself (the run on the right):</p>
             <CommandChip command={cmd} />
           </div>
         )}
