@@ -1,0 +1,28 @@
+You are building Resurgo during neatHack. Read hackathon.md and resurgo/run.py first (look at `Box.fill_env` and `pipeline`). This is a small runner fix before the held-out v2 sweep.
+
+**The bug.** In the v2.1 development run of `Timidan/agent-arena --path commentator`, the server failed at the serve step. `.env.example` sets `CHECKPOINT_DB=/var/lib/aan-tv/checkpoint.sqlite`, a directory the unprivileged container user can't create. The model's fourth attempt correctly changed `.env.example` to a relative path, but `fill_env` only writes `.env` "unless .env already exists". The runner had already written `.env` on the first pipeline run, so the fix could never take effect.
+
+**The fix.**
+- When `.env` was created by the runner (it isn't in the repo at the run's commit), regenerate it from the current `.env.example` at the start of every pipeline run. A change to `.env.example` then takes effect on the next run.
+- Never overwrite a `.env` that the repo itself commits.
+- Keep the dummy-value behaviour exactly as it is.
+- The verifier writes `.env` from the patched `.env.example` the same way, so the proof matches.
+
+**Check.**
+- Add the smallest unit test for the decision: runner-made `.env` gets regenerated, committed `.env` doesn't. Run `uv run --with pytest pytest -q resurgo`.
+- Re-run `Timidan/agent-arena` at `f6fc3243ac98` with `--path commentator --agent-version v2.2 --set dev`, and report the outcome. Don't tune anything to this repo.
+
+Commit with a short entry in hackathon.md.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json` of this project.
+- No unfiltered `docker ps`, `docker network ls` or `docker images`. Only touch `resurgo-*` resources.
+- Never open pull requests.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report.
+
+---
+
+Check the agent-arena v2.2 dev run (task b1ra525o7), then add hackathon.md entry and commit.
