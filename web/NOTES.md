@@ -96,4 +96,13 @@ Not done / limits:
 - **Replay run**: sits in the "What actually ran" header row (flex, wraps under the heading on narrow widths).
 - **check-render.mjs**: the theme labels were swapped (Blink's `preferredColorScheme` 0 is dark, 1 is light), so the "light" screenshots were dark. Fixed.
 - **Not verified**: the status change itself in a browser, because a current API could not be started in the session that made it (server and Python execution needed an approval it could not get). The logic was checked by reading `_verified` / `_status` against both records fetched from the running API.
-- **Seen, not fixed**: at 420 px the landing page has a page-level horizontal scrollbar, and long step output in the run view shows inner horizontal scrollbars.
+- **Seen, then fixed in the next section**: at 420 px the landing page had a page-level horizontal scrollbar, and long step output in the run view showed inner horizontal scrollbars.
+
+## Layout fixes, install entry point, deploy files
+
+- **Sideways scroll at 420 px** had two sources. Single-column grids (no explicit column) were sized to their widest nowrap child, so the run view's verifier cards and the landing's step terminals stretched the page; those grids now have `grid-cols-1`. And an unrevealed `.reveal` block with a +24 px X offset stuck 8 px out past the 16 px gutter; the offset is now capped at the gutter in `index.css`.
+- **Step output** wraps (`whitespace-pre-wrap break-words`, still monospace) instead of scrolling inside the terminal.
+- **Install**: "Install on GitHub" (`INSTALL_URL` in `lib/utils.ts`) is the hero's primary action and sits in the header ("Install" under 640 px). The copy chip is the secondary "or run it yourself". Motion is the existing `.press` squash only.
+- **Copy that now disagrees**: the closing section ("The GitHub App is the next thing to build"), the chat's "Live checks open with the GitHub App", the "Planned flow" label and `api/main.py`'s agent view ("The GitHub App is not live") still say the App is not live. Not edited; decide what is true and update them together.
+- **Deploy**: `Dockerfile` (Node build stage, Python stage with fastapi and uvicorn installed under a constraints file exported from `uv.lock`), `.dockerignore` (allowlist), `deploy/compose.yaml` (`RESURGO_RUNS_DIR` mounted read-only at `/runs`, network `public_proxy`, no ports). The image was not built or run; it was checked by reading and by running `uv export` locally. The runs directory must be readable by uid 10001.
+- **Check**: `node web/check-render.mjs` now measures at 420 and 1280 px in both themes, fails on page-level sideways scroll, on inner scrollbars in step output, and on a missing or wrong install link.
