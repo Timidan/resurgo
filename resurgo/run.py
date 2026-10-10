@@ -154,6 +154,18 @@ class Box:
         code, out, _ = exec_raw(self.container, f"cat {shlex.quote('repo/' + path)}")
         return out if code == 0 else None
 
+    def read_many(self, paths):
+        """{path: content} for the repo-relative paths that exist, in one container call."""
+        quoted = " ".join(shlex.quote(p) for p in paths)
+        script = (f'cd repo && for f in {quoted}; do [ -f "$f" ] && '
+                  f'{{ printf "\\0FILE %s\\0" "$f"; cat "$f"; }}; done; true')
+        _, out, _ = exec_raw(self.container, script)
+        files = {}
+        for chunk in out.split("\0FILE ")[1:]:
+            path, _, text = chunk.partition("\0")
+            files[path] = text
+        return files
+
     def write(self, files):
         for path, content in files.items():
             q = shlex.quote("repo/" + path)
@@ -174,18 +186,18 @@ class Box:
         """Contents of the files the rules read: project dir first, repo root as fallback
         (never for package.json)."""
         files, self.where = {}, {}
+        found = self.read_many([p for n in RULE_FILES for p in {self.rel(n), n}])
         for name in RULE_FILES:
             for path in dict.fromkeys([self.rel(name), name]):
-                text = self.read(path)
-                if text is not None:
-                    files[name], self.where[name] = text, path
+                if path in found:
+                    files[name], self.where[name] = found[path], path
                     break
                 if name == "package.json":
                     break
         return files
 
     def clone(self, repo, sha):
-        check = f" && test -d {shlex.quote(self.proj)}" if self.subdir else ""
+        check = f" && test -d {shlex.quote(self.subdir)}" if self.subdir else ""
         return self.sh("clone", f"git clone -q https://github.com/{repo}.git repo && cd repo "
                                 f"&& git checkout -q {sha}{check}")
 

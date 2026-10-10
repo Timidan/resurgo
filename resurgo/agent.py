@@ -119,13 +119,14 @@ def build_prompt(box, failure, attempts):
             parts.append(f"- {a['source']} {a['kind']} {a['files']}: {a.get('result')}")
     names = ["package.json", ".nvmrc", ".node-version", ".npmrc", ".yarnrc.yml",
              "pnpm-workspace.yaml"] + sorted(LOCKFILE_NAMES)
+    found = box.read_many([p for n in names for p in {box.rel(n), n}])
     seen = set()
     for name in names:
         for path in (box.rel(name), name):
             if path in seen:
                 continue
             seen.add(path)
-            text = box.read(path)
+            text = found.get(path)
             if text is None:
                 continue
             if name in LOCKFILE_NAMES:
