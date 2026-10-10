@@ -5,6 +5,8 @@ import AIDiff from "@/components/smoothui/ai-diff";
 import AIReasoning from "@/components/smoothui/ai-reasoning";
 import AITaskList from "@/components/smoothui/ai-task-list";
 import { ActionButton, type ActionState } from "@/components/ReplayButton";
+import { panelId, tabId, TabList } from "@/components/Tabs";
+import { cn } from "@/lib/utils";
 import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, StatusBadge } from "@/components/ui-bits";
 import { useRun, type RunDetail } from "@/lib/api";
@@ -99,6 +101,7 @@ function RunBody({ d }: { d: RunDetail }) {
   const patch = useMemo(() => (fix_patch ? parsePatch(fix_patch) : []), [fix_patch]);
   const meta = statusMeta(s.status);
 
+  const [view, setView] = useState<"run" | "diff">("run");
   const [rows, setRows] = useState<TermRow[] | null>(null); // null = show the recorded view
   const [state, setState] = useState<ActionState>("idle");
   const [thinking, setThinking] = useState(false);
@@ -174,7 +177,8 @@ function RunBody({ d }: { d: RunDetail }) {
     setState("done");
   }, [events, reduce]);
 
-  const verified = s.status === "runs" && r.verifier?.passed;
+  // Verified means the separate clean container ran steps and all of them passed (decided by the API).
+  const verified = s.verified;
   const doneLabel = verified ? `${meta.word} · verified clean` : meta.word;
   const approvals = (r.agent?.attempts ?? []).filter((a) => a.status === "needs_approval");
   const attempts = r.agent?.attempts ?? [];
@@ -204,7 +208,12 @@ function RunBody({ d }: { d: RunDetail }) {
           <StatusBadge status={s.status} className="text-lg" />
           {s.status === "fixed" && (
             <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
-              Recorded by an earlier agent version, before the separate clean-container check existed.
+              Unverified: this record has no clean-container steps, so nothing was proved.
+            </p>
+          )}
+          {verified && (
+            <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
+              {s.status === "runs_with_gaps" ? "Verified in a clean container, with gaps listed below." : "Verified in a separate clean container."}
             </p>
           )}
         </div>
@@ -212,6 +221,43 @@ function RunBody({ d }: { d: RunDetail }) {
 
       <section aria-labelledby="terminal-h" className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0">
+          <TabList
+            prefix="runview"
+            label="Run view"
+            tabs={[
+              { id: "run", label: "Run" },
+              { id: "diff", label: patch.length ? "Fix diff" : "Fix diff (none recorded)" },
+            ]}
+            value={view}
+            onChange={(id) => setView(id)}
+            className="mb-5 inline-flex rounded-lg border border-control bg-muted p-1"
+            tabClassName={(sel) =>
+              cn(
+                "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
+                sel ? "bg-panel text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )
+            }
+          />
+          {view === "diff" ? (
+            <div role="tabpanel" id={panelId("runview", "diff")} aria-labelledby={tabId("runview", "diff")}>
+              <h2 id="terminal-h" className="text-2xl font-semibold">The fix</h2>
+              {patch.length > 0 ? (
+                <>
+                  <p className="mb-4 mt-1 text-muted-foreground">
+                    {fixLabel(s.fix_kind, s.needs_approval)} change, recorded as <span className="font-mono">fix.patch</span>.
+                  </p>
+                  <div className="grid gap-4">
+                    {patch.map((f) => <AIDiff key={f.title} title={f.title} lines={f.lines} />)}
+                  </div>
+                </>
+              ) : (
+                <p className="mt-3 rounded-lg border border-border bg-panel p-4 text-muted-foreground">
+                  <span aria-hidden className="font-mono">◌ </span>This run recorded no fix patch.
+                </p>
+              )}
+            </div>
+          ) : (
+          <div role="tabpanel" id={panelId("runview", "run")} aria-labelledby={tabId("runview", "run")}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <h2 id="terminal-h" className="text-2xl font-semibold">What actually ran</h2>
             {events.length > 0 && (
@@ -238,6 +284,8 @@ function RunBody({ d }: { d: RunDetail }) {
           <p className="mt-3 text-sm text-muted-foreground">
             Replay plays these recorded steps back from the run record. Nothing is re-executed.
           </p>
+          </div>
+          )}
         </div>
 
         <aside className="min-w-0 space-y-6">
@@ -297,18 +345,6 @@ function RunBody({ d }: { d: RunDetail }) {
                 ))}
               </ol>
             </AIReasoning>
-          </div>
-        </section>
-      )}
-
-      {patch.length > 0 && (
-        <section aria-labelledby="fix-h" className="mt-14">
-          <h2 id="fix-h" className="mb-1 text-2xl font-semibold">The fix</h2>
-          <p className="mb-4 text-muted-foreground">
-            {fixLabel(s.fix_kind, s.needs_approval)} change, recorded as <span className="font-mono">fix.patch</span>.
-          </p>
-          <div className="grid gap-4">
-            {patch.map((f) => <AIDiff key={f.title} title={f.title} lines={f.lines} />)}
           </div>
         </section>
       )}

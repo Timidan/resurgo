@@ -1,12 +1,15 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimIcon, type IconName } from "@/components/art";
-import AIDiff from "@/components/smoothui/ai-diff";
 import AIReasoning from "@/components/smoothui/ai-reasoning";
+import { LiveTiles } from "@/components/LiveTiles";
+import { RepoChat } from "@/components/RepoChat";
+import { SolutionTabs } from "@/components/SolutionTabs";
+import { Story } from "@/components/Story";
 import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, Mark, Reveal, StatusBadge } from "@/components/ui-bits";
 import type { RunDetail, Step } from "@/lib/api";
-import { fixLabel, fmtDur, parsePatch, shortRepo, statusMeta, stepOk } from "@/lib/run";
+import { fixLabel, fmtDur, parsePatch, statusMeta, stepOk } from "@/lib/run";
 import { cn } from "@/lib/utils";
 import { useLandingData, type LandingData } from "./landing-data";
 
@@ -39,22 +42,10 @@ function CommandChip({ command }: { command: string }) {
             setTimeout(() => setCopied(false), 1800);
           }).catch(() => undefined);
         }}
-        className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        className="shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted"
       >
         <span aria-live="polite">{copied ? "✓ Copied" : "Copy"}</span>
       </button>
-    </div>
-  );
-}
-
-function Window({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
-  return (
-    <div className={cn("overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_60px_-30px_color-mix(in_srgb,var(--ink)_40%,transparent)]", className)}>
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
-        <span aria-hidden className="inline-block size-2 rounded-[2px] bg-muted-foreground" />
-        <span className="font-mono">{title}</span>
-      </div>
-      <div className="p-4">{children}</div>
     </div>
   );
 }
@@ -63,13 +54,11 @@ function Window({ title, children, className }: { title: string; children: React
 function Hero({ data }: { data: LandingData }) {
   const f = data.featured;
   const cmd = commandFor(f);
-  const failed = f?.result.agent?.steps?.find((s) => !stepOk(s));
-  const proof = f?.result.verifier?.steps ?? [];
   return (
-    <section className="mx-auto grid w-full max-w-7xl gap-14 px-4 pb-24 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:pt-24">
+    <section className="mx-auto grid w-full max-w-7xl gap-14 px-4 pb-24 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24">
       <div className="min-w-0">
         <Eyebrow>An agent that keeps projects runnable</Eyebrow>
-        <h1 className="text-[clamp(3rem,7.5vw,6.25rem)] font-semibold leading-[0.95] tracking-[-0.03em]">
+        <h1 className="text-[clamp(3rem,7vw,5.75rem)] font-semibold leading-[0.95] tracking-[-0.03em]">
           Your projects, <Mark>runnable</Mark> again.
         </h1>
         <p className="mt-7 max-w-xl text-xl leading-relaxed text-muted-foreground">
@@ -78,13 +67,13 @@ function Hero({ data }: { data: LandingData }) {
         <div className="mt-9 flex flex-wrap items-center gap-3">
           <Link
             to="/runs"
-            className="inline-flex min-h-12 items-center rounded-lg border border-foreground bg-foreground px-6 text-base font-semibold text-background hover:bg-foreground/90"
+            className="inline-flex min-h-12 items-center rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
           >
             See real runs
           </Link>
           <span
             aria-disabled="true"
-            className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-border px-5 text-base text-muted-foreground"
+            className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-control px-5 text-base text-muted-foreground"
           >
             <span aria-hidden className="font-mono">◌</span> GitHub App: not live yet
           </span>
@@ -101,75 +90,12 @@ function Hero({ data }: { data: LandingData }) {
         </p>
       </div>
 
-      {f && (
-        <div className="relative min-w-0 space-y-4 lg:pt-6" aria-label="A real run of the rinne repository">
-          <Reveal>
-            <Window title={`${f.result.repo} @ ${f.result.sha}`}>
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="text-lg font-semibold">{shortRepo(f.result.repo)}</p>
-                {data.before ? <StatusBadge status={data.before.status} /> : null}
-                <span aria-hidden className="font-mono text-muted-foreground">→</span>
-                <StatusBadge status={f.summary.status} />
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {data.before ? "Broken from a fresh clone, then repaired and re-proved." : "Checked from a fresh clone."}
-              </p>
-            </Window>
-          </Reveal>
-          {failed && (
-            <Reveal delay={0.25} x={24}>
-              <Terminal title="premise check · agent container" rows={stepRows([failed], "h")} compact tailLines={7} />
-            </Reveal>
-          )}
-          {proof.length > 0 && (
-            <Reveal delay={0.5} x={-24}>
-              <Window title="clean container · rebuilt from the recipe">
-                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="list">
-                  {proof.map((s, i) => (
-                    <li key={i} className="rounded-md border border-border bg-background p-3">
-                      <p className="font-mono text-sm font-semibold">
-                        <span aria-hidden>{stepOk(s) ? "✓ " : "✗ "}</span>{s.name}
-                        <span className="sr-only">{stepOk(s) ? " passed" : " failed"}</span>
-                      </p>
-                      <p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground">{fmtDur(s.duration_s)}</p>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-4 flex items-center gap-2 text-base font-semibold">
-                  <span aria-hidden className="font-mono">{statusMeta(f.summary.status).glyph}</span>
-                  {statusMeta(f.summary.status).word}
-                  <Link to={`/runs/${f.summary.id}`} className="ml-auto text-sm font-normal text-muted-foreground underline underline-offset-4 hover:text-foreground">
-                    Open this run
-                  </Link>
-                </p>
-              </Window>
-            </Reveal>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
-/* 2. Test set -------------------------------------------------------------- */
-function TestSet({ data }: { data: LandingData }) {
-  if (!data.latest.length) return null;
-  return (
-    <section className="border-y border-border bg-card/50" aria-label="Repositories run so far">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:px-6 lg:flex-row lg:items-baseline lg:gap-10">
-        <p className="shrink-0 text-lg font-semibold">Run so far on {data.latest.length} public repositor{data.latest.length === 1 ? "y" : "ies"}</p>
-        <ul className="flex flex-wrap gap-x-6 gap-y-2" role="list">
-          {data.latest.map((r) => (
-            <li key={r.id}>
-              <Link to={`/runs/${r.id}`} className="font-mono text-sm underline-offset-4 hover:underline">
-                <span aria-hidden>{statusMeta(r.status).glyph} </span>
-                {r.repo}
-                <span className="sr-only"> {statusMeta(r.status).word}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-muted-foreground lg:ml-auto">Names are plain text. Not affiliated.</p>
+      <div className="min-w-0 lg:pt-4">
+        {f ? (
+          <Story detail={f} loop label={`A real run of ${f.result.repo}, replayed`} />
+        ) : data.loading ? (
+          <p className="text-muted-foreground" role="status">◌ Loading a recorded run…</p>
+        ) : null}
       </div>
     </section>
   );
@@ -215,7 +141,7 @@ function Steps({ data }: { data: LandingData }) {
       {items.map((it, i) => (
         <div key={it.title} className="grid items-center gap-10 lg:grid-cols-2">
           <Reveal className={cn(i % 2 && "lg:order-2")}>
-            <AnimIcon name={it.icon} className="size-9 text-highlight" />
+            <AnimIcon name={it.icon} className="size-9 text-accent-strong" />
             <h2 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">{it.title}</h2>
             <p className="mt-4 max-w-md text-lg text-muted-foreground">{it.body}</p>
           </Reveal>
@@ -234,15 +160,15 @@ function Projects({ data }: { data: LandingData }) {
   if (!data.latest.length) return null;
   const a = f?.result.agent?.attempts?.[f.result.agent.attempts.length - 1];
   return (
-    <section className="border-y border-border bg-card/40">
+    <section className="border-y border-border bg-panel/50">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <Reveal className="min-w-0">
           <Eyebrow>Your projects</Eyebrow>
           <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">One state per project, in words.</h2>
-          <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-background" role="list">
+          <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-panel" role="list">
             {data.latest.map((r) => (
               <li key={r.id}>
-                <Link to={`/runs/${r.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-card">
+                <Link to={`/runs/${r.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-muted">
                   <span className="min-w-0 flex-1 truncate font-semibold">
                     {r.repo}{r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
                   </span>
@@ -263,7 +189,7 @@ function Projects({ data }: { data: LandingData }) {
                 <p className="text-sm text-muted-foreground">From {f?.result.repo}</p>
               </div>
             </div>
-            <div className="mt-5 rounded-lg border border-border bg-background p-4">
+            <div className="mt-5 rounded-lg border border-border bg-panel p-4">
               <AIReasoning defaultOpen collapseWhenDone={false} duration={(f?.result.model_calls ?? []).reduce((s, c) => s + (c.duration_s ?? 0), 0) || undefined}>
                 <p className="text-foreground">{a.rationale}</p>
                 {a.confidence != null && <p className="mt-2 font-mono text-xs">confidence {a.confidence}</p>}
@@ -278,11 +204,8 @@ function Projects({ data }: { data: LandingData }) {
 
 /* 5. Open a run ------------------------------------------------------------ */
 function OpenARun({ data }: { data: LandingData }) {
-  const cards = data.latest
-    .map((r) => data.details.find((d) => d.summary.id === r.id))
-    .filter((d): d is RunDetail => !!d)
-    .sort((a, b) => Number(!!b.fix_patch) - Number(!!a.fix_patch))
-    .slice(0, 3);
+  // Everything here comes from the /api/runs summaries: no per-run fetch.
+  const cards = [...data.latest].sort((a, b) => Number(!!b.patch_preview) - Number(!!a.patch_preview)).slice(0, 3);
   if (!cards.length) return null;
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
@@ -290,21 +213,21 @@ function OpenARun({ data }: { data: LandingData }) {
         <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Don&apos;t take our word for it. Open a run.</h2>
       </Reveal>
       <div className="mt-12 grid gap-6 lg:grid-cols-3">
-        {cards.map((d, i) => {
-          const file = d.fix_patch ? parsePatch(d.fix_patch)[0] : null;
+        {cards.map((r, i) => {
+          const file = r.patch_preview ? parsePatch(r.patch_preview)[0] : null;
           return (
-            <Reveal key={d.summary.id} delay={i * 0.1}>
-              <Link to={`/runs/${d.summary.id}`} className="group flex h-full flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground">
-                <StatusBadge status={d.summary.status} className="self-start" />
-                <h3 className="mt-4 break-words text-2xl font-semibold">{d.result.repo}</h3>
+            <Reveal key={r.id} delay={i * 0.1}>
+              <Link to={`/runs/${r.id}`} className="group flex h-full flex-col rounded-xl border border-border bg-panel p-5 transition-colors hover:border-accent-strong">
+                <StatusBadge status={r.status} className="self-start" />
+                <h3 className="mt-4 break-words text-2xl font-semibold">{r.repo}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {fixLabel(d.summary.fix_kind, d.summary.needs_approval)} fix · {fmtDur(d.summary.duration_s)} · {d.summary.model_calls} model call{d.summary.model_calls === 1 ? "" : "s"}
+                  {fixLabel(r.fix_kind, r.needs_approval)} fix · {fmtDur(r.duration_s)} · {r.model_calls} model call{r.model_calls === 1 ? "" : "s"}
                 </p>
                 {file ? (
-                  <pre className="mt-5 flex-1 overflow-hidden rounded-md bg-terminal p-3 font-mono text-xs leading-relaxed text-terminal-ink">
+                  <pre className="mt-5 flex-1 overflow-hidden rounded-md border border-border bg-terminal p-3 font-mono text-xs leading-relaxed text-terminal-ink">
                     <span className="text-muted-foreground">{file.title}</span>
                     {file.lines.slice(0, 7).map((l, j) => (
-                      <span key={j} className={cn("block whitespace-pre", l.kind === "added" && "bg-highlight text-highlight-foreground")}>
+                      <span key={j} className={cn("block whitespace-pre", l.kind === "added" && "bg-evidence text-on-evidence")}>
                         {l.kind === "added" ? "+" : l.kind === "removed" ? "-" : " "}{l.content}
                       </span>
                     ))}
@@ -326,7 +249,7 @@ function OpenARun({ data }: { data: LandingData }) {
 function Problem({ data }: { data: LandingData }) {
   if (!data.problems.length) return null;
   return (
-    <section className="border-y border-border bg-card/40">
+    <section className="border-y border-border bg-panel/50">
       <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
         <Reveal>
           <h2 className="max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">Projects rot while you&apos;re not looking.</h2>
@@ -334,12 +257,12 @@ function Problem({ data }: { data: LandingData }) {
         </Reveal>
         <ol className="mt-14 grid gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-3" role="list">
           {data.problems.map((p, i) => (
-            <li key={p.key} className="bg-background">
+            <li key={p.key} className="bg-canvas">
               <Reveal delay={i * 0.12} className="flex h-full flex-col p-6">
                 <span className="font-mono text-sm text-muted-foreground">0{i + 1}</span>
                 <h3 className="mt-3 text-2xl font-semibold">{p.title}</h3>
                 <p className="mt-3 text-muted-foreground">{p.body}</p>
-                <blockquote className="mt-6 flex-1 whitespace-pre-wrap break-words border-l-2 border-highlight pl-4 font-mono text-xs leading-relaxed">
+                <blockquote className="mt-6 flex-1 whitespace-pre-wrap break-words border-l-2 border-evidence pl-4 font-mono text-xs leading-relaxed">
                   {p.evidence.length > 380 ? `${p.evidence.slice(0, 380)}…` : p.evidence}
                 </blockquote>
                 <Link to={`/runs/${p.runId}`} className="mt-5 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
@@ -355,22 +278,9 @@ function Problem({ data }: { data: LandingData }) {
 }
 
 /* 7. The solution: tabs ---------------------------------------------------- */
-const TABS: { id: string; label: string; icon: IconName; blurb: string }[] = [
-  { id: "check", label: "Check", icon: "check", blurb: "Clone fresh, then install, build, test and start, stopping at the first failure." },
-  { id: "diagnose", label: "Diagnose", icon: "diagnose", blurb: "Deterministic rules first. The model only runs when something broke." },
-  { id: "repair", label: "Repair", icon: "repair", blurb: "The smallest change that could work, written as a patch on a branch." },
-  { id: "prove", label: "Prove", icon: "prove", blurb: "A separate container rebuilds from the recipe. Only that counts." },
-];
-
 function Solution({ data }: { data: LandingData }) {
-  const [tab, setTab] = useState("check");
   const f = data.featured;
   if (!f) return null;
-  const a = f.result.agent;
-  const attempt = a?.attempts?.[0];
-  const patch = f.fix_patch ? parsePatch(f.fix_patch) : [];
-  const firstFail = (a?.steps ?? []).findIndex((s) => !stepOk(s));
-  const checkSteps = (a?.steps ?? []).slice(0, firstFail >= 0 ? firstFail + 1 : undefined);
   const st = data.stats;
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
@@ -378,56 +288,7 @@ function Solution({ data }: { data: LandingData }) {
         <Eyebrow>How it works</Eyebrow>
         <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Check. Diagnose. Repair. Prove.</h2>
       </Reveal>
-      <div className="mt-12 grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <div role="tablist" aria-label="Stages" aria-orientation="vertical" className="flex gap-2 overflow-x-auto lg:flex-col">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              id={`tab-${t.id}`}
-              aria-selected={tab === t.id}
-              aria-controls={`panel-${t.id}`}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "flex min-w-40 items-start gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
-                tab === t.id ? "border-foreground bg-card" : "border-transparent text-muted-foreground hover:bg-card",
-              )}
-            >
-              <AnimIcon name={t.icon} className="mt-0.5 size-5 shrink-0" />
-              <span>
-                <span className="block font-semibold text-foreground">{t.label}</span>
-                <span className="mt-0.5 hidden text-sm lg:block">{t.blurb}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-        <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-6">
-          {tab === "check" && <Terminal title={`${f.result.repo} · check`} rows={stepRows(checkSteps, "k")} tailLines={5} />}
-          {tab === "diagnose" &&
-            (attempt?.rationale ? (
-              <div className="flex gap-4">
-                <AgentOrb thinking={false} size={48} />
-                <div className="min-w-0 flex-1">
-                  <AIReasoning defaultOpen collapseWhenDone={false} duration={f.result.model_calls?.[0]?.duration_s}>
-                    <p className="text-foreground">{attempt.rationale}</p>
-                    <p className="mt-2 font-mono text-xs">
-                      {f.result.model_calls?.[0]?.model} · confidence {attempt.confidence}
-                    </p>
-                  </AIReasoning>
-                </div>
-              </div>
-            ) : (
-              <p className="text-muted-foreground">This run needed no diagnosis.</p>
-            ))}
-          {tab === "repair" &&
-            (patch.length ? (
-              <div className="grid gap-4">{patch.map((p) => <AIDiff key={p.title} title={p.title} lines={p.lines} />)}</div>
-            ) : (
-              <p className="text-muted-foreground">No patch was recorded.</p>
-            ))}
-          {tab === "prove" && <Terminal title={`${f.result.repo} · clean container`} rows={stepRows(f.result.verifier?.steps ?? [], "v")} tailLines={4} />}
-        </div>
-      </div>
+      <SolutionTabs detail={f} />
 
       {st && (
         <Reveal className="mt-16">
@@ -437,7 +298,7 @@ function Solution({ data }: { data: LandingData }) {
               { k: "Verified in a clean container", v: String(st.verified) },
               ...(st.medianVerifiedS != null ? [{ k: "Median wall time of a verified fix", v: fmtDur(st.medianVerifiedS) }] : []),
             ].map((s) => (
-              <div key={s.k} className="bg-background p-6">
+              <div key={s.k} className="bg-canvas p-6">
                 <dd className="font-mono text-5xl font-semibold tabular-nums tracking-tight">{s.v}</dd>
                 <dt className="mt-2 text-muted-foreground">{s.k}</dt>
               </div>
@@ -474,18 +335,21 @@ function Artifacts({ data }: { data: LandingData }) {
     ...(proof !== "[]" ? [{ title: "The proof", body: "What the separate clean container ran, and how each step ended.", code: proof }] : []),
   ];
   return (
-    <section className="border-y border-border bg-card/40">
+    <section className="border-y border-border bg-panel/50">
       <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
         <Reveal>
           <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Everything it does is a file you can read.</h2>
+          <p className="mt-4 text-muted-foreground">
+            Agents can read it too: <a href="/index.md" className="font-semibold text-accent-strong underline underline-offset-4">the Agent view</a> describes the API and how runs are proved.
+          </p>
         </Reveal>
         <div className="mt-12 grid gap-6 md:grid-cols-2">
           {cards.map((c, i) => (
             <Reveal key={c.title} delay={(i % 2) * 0.1}>
-              <div className="flex h-full flex-col rounded-xl border border-border bg-background p-5">
+              <div className="flex h-full flex-col rounded-xl border border-border bg-canvas p-5">
                 <h3 className="text-xl font-semibold">{c.title}</h3>
                 <p className="mt-1 text-muted-foreground">{c.body}</p>
-                <pre className="mt-4 max-h-64 flex-1 overflow-auto rounded-md bg-terminal p-3 font-mono text-xs leading-relaxed text-terminal-ink" tabIndex={0}>
+                <pre className="mt-4 max-h-64 flex-1 overflow-auto rounded-md border border-border bg-terminal p-3 font-mono text-xs leading-relaxed text-terminal-ink" tabIndex={0}>
                   {c.code}
                 </pre>
               </div>
@@ -513,8 +377,10 @@ function Toolchains() {
 /* 11. Final CTA ------------------------------------------------------------ */
 function Closing({ data }: { data: LandingData }) {
   const history = [...data.runs].filter((r) => r.status !== "checking").reverse();
-  const tone = (s: string) =>
-    s === "runs" ? "bg-runs text-canvas" : s === "broken" || s === "fail" ? "bg-broken text-canvas" : "bg-gaps text-canvas";
+  const tone = (s: string) => {
+    const m = statusMeta(s);
+    return m.text === "text-runs" ? "bg-runs text-canvas" : m.text === "text-broken" ? "bg-broken text-canvas" : "bg-gaps text-canvas";
+  };
   const steps = ["Install the app", "Pick repos", "First check", "Weekly re-checks"];
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
@@ -554,7 +420,7 @@ function Closing({ data }: { data: LandingData }) {
         <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">Planned flow</p>
         <ol className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4" role="list">
           {steps.map((s, i) => (
-            <li key={s} className="bg-background p-5">
+            <li key={s} className="bg-canvas p-5">
               <span className="font-mono text-sm text-muted-foreground">0{i + 1}</span>
               <p className="mt-2 text-lg font-semibold">{s}</p>
             </li>
@@ -573,7 +439,8 @@ export default function Landing() {
   return (
     <main>
       <Hero data={data} />
-      <TestSet data={data} />
+      <LiveTiles runs={data.latest} />
+      <RepoChat latest={data.latest} />
       <Steps data={data} />
       <Projects data={data} />
       <OpenARun data={data} />

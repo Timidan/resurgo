@@ -17,6 +17,8 @@ const STATUS: Record<string, StatusMeta> = {
   // Only a record with no verifier steps at all lands here (see api/main.py).
   fixed: { word: "Fixed, unverified", glyph: "◐", tone: T_GAPS, text: "text-gaps" },
   checking: { word: "Checking", glyph: "◌", tone: T_CHECK, text: "text-checking" },
+  model_limited: { word: "Model limit reached", glyph: "◌", tone: T_BROKEN, text: "text-broken" },
+  unsupported: { word: "Unsupported", glyph: "◌", tone: "bg-muted text-secondary", text: "text-secondary" },
 };
 
 export const statusMeta = (status: string): StatusMeta =>

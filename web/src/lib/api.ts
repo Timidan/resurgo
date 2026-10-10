@@ -68,6 +68,18 @@ export type RunResult = {
   trace_id?: string;
 };
 
+export type StepBrief = { name: string; ok: boolean; duration_s: number | null };
+
+export type AttemptBrief = {
+  kind: string | null;
+  files: string[];
+  result: string | null;
+  status: string | null;
+  confidence: number | null;
+  rationale: string | null;
+};
+
+/** One row of /api/runs. Carries what the landing page draws, so it needs no per-run fetch. */
 export type RunSummary = {
   id: string;
   repo: string | null;
@@ -80,6 +92,18 @@ export type RunSummary = {
   fix_kind: string | null;
   needs_approval: boolean;
   started: number | null;
+  verified: boolean;
+  gaps: string[];
+  agent_steps: StepBrief[];
+  verifier_steps: StepBrief[];
+  attempts: AttemptBrief[];
+  rules_fired: string[];
+  model: string | null;
+  model_seconds: number | null;
+  error_line: string | null;
+  problems: { key: string; evidence: string }[];
+  patch_preview: string | null;
+  patch_added: number;
 };
 
 export type RunDetail = { summary: RunSummary; result: RunResult; fix_patch: string | null };
@@ -89,7 +113,10 @@ type Async<T> = { data: T | null; error: string | null; loading: boolean };
 function useFetch<T>(url: string | null): Async<T> {
   const [state, setState] = useState<Async<T>>({ data: null, error: null, loading: url !== null });
   useEffect(() => {
-    if (url === null) return;
+    if (url === null) {
+      setState({ data: null, error: null, loading: false });
+      return;
+    }
     const ctl = new AbortController();
     setState({ data: null, error: null, loading: true });
     fetch(url, { signal: ctl.signal })
@@ -107,28 +134,5 @@ function useFetch<T>(url: string | null): Async<T> {
 }
 
 export const useRuns = () => useFetch<RunSummary[]>("/api/runs");
-export const useRun = (id: string) => useFetch<RunDetail>(`/api/runs/${encodeURIComponent(id)}`);
-
-/** Fetch several run records at once; ids that fail are left out. */
-export function useRunDetails(ids: string[]): { details: RunDetail[]; loading: boolean } {
-  const key = ids.join(",");
-  const [state, setState] = useState<{ details: RunDetail[]; loading: boolean }>({ details: [], loading: ids.length > 0 });
-  useEffect(() => {
-    if (!key) {
-      setState({ details: [], loading: false });
-      return;
-    }
-    const ctl = new AbortController();
-    Promise.all(
-      key.split(",").map((id) =>
-        fetch(`/api/runs/${encodeURIComponent(id)}`, { signal: ctl.signal })
-          .then((r) => (r.ok ? (r.json() as Promise<RunDetail>) : null))
-          .catch(() => null),
-      ),
-    ).then((all) => {
-      if (!ctl.signal.aborted) setState({ details: all.filter((d): d is RunDetail => d !== null), loading: false });
-    });
-    return () => ctl.abort();
-  }, [key]);
-  return state;
-}
+/** One run's full record. Pass null to fetch nothing. */
+export const useRun = (id: string | null) => useFetch<RunDetail>(id ? `/api/runs/${encodeURIComponent(id)}` : null);
