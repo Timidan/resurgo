@@ -1,0 +1,26 @@
+You are building Resurgo during neatHack. Read docs/PLAN.md, hackathon.md and resurgo/*.py first. Milestone 2c makes the agent ready for the held-out sweep. Keep changes small.
+
+1. **Build timeouts.** Two Node builds hit the 15-minute cap. Raise the Node cap to 25 minutes, give build steps 6 GB of memory (keep 2 CPUs), and set `REDACTED` for builds. Re-run `chroxify/feedbase` at `18dca32a923e` once to see whether the build now finishes.
+2. **Services and workers.** If a `start` script never opens a port but the process stays alive for 30 seconds without exiting, prove it as a "service". It passes if it is still running at 30 seconds. Record that proof type honestly in the result. If it crashes, it's broken at serve, as now.
+3. **Rust toolchain pins.** Install the pinned toolchain during the toolchain step (as root inside the build container, before switching to the non-root user), or choose the matching `rust:<version>` image.
+4. **Real runs on two NEW development repos,** never the held-out set:
+   - Foundry: `Timidan/NFTLIL` (pin its current HEAD SHA).
+   - Rust: one small, real CLI repo that is NOT in the held-out list, last pushed between 2025-01 and 2026-04 (pin its SHA).
+   Add both to `eval/dev.json` along with the five existing development repos.
+5. **Sweep runner.**
+   - `eval/heldout.json` holds exactly the 24 held-out repos, branches and SHAs from the table in docs/PLAN.md. Copy them; don't change them.
+   - `uv run python -m resurgo.sweep eval/heldout.json --agent-version v1 [--sweep-id ID]` runs the repos ONE AT A TIME, tags every run with agent_version, set and sweep_id, and writes `runs/sweeps/<id>/summary.json` plus `summary.md` (repo, type, status, proof steps passed, time, model calls, fix kind, needs_approval count).
+   - It resumes an interrupted sweep by skipping repos already recorded under that sweep id.
+   - On `model_limited` it records the status and continues with the next repo.
+   - Add one smoke check for the summary aggregation.
+6. Do NOT run the sweep on the held-out set. Running `eval/dev.json` through the sweep runner is fine as a test.
+7. Commit in small steps and update hackathon.md.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- No unfiltered `docker ps`, `docker network ls` or `docker images`. Only touch `resurgo-*` resources and the images you pull.
+- Never open pull requests on repos you don't own.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report: a results table for the new runs and what's left.
