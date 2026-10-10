@@ -1,0 +1,49 @@
+You are building Resurgo during neatHack. Read hackathon.md, resurgo/run.py, resurgo/sweep.py, resurgo/pr.py and api/main.py first. This task adds the install worker. When someone installs the "Resurgo Agent" GitHub App, the web API writes a request file. This worker turns that request into real fresh-clone checks, one at a time, and reports progress through a status file that the web page shows. Keep it small and readable: one module, `resurgo/worker.py`, plus one small test.
+
+**File contract (the web side already uses it; follow it exactly).**
+- `QUEUE_DIR` comes from the environment. Requests arrive in `$QUEUE_DIR/requests/<installation_id>.json` as `{"installation_id": <int>, "received": "<UTC ISO>", "setup_action": "install|update"}`.
+- The worker writes `$QUEUE_DIR/status/<installation_id>.json`, atomically (temp file, then rename):
+  ```json
+  {"installation_id": 170024627, "account": "Timidan", "updated": "<UTC ISO>",
+   "state": "received|checking|done|rejected", "reason": "<why, when rejected>",
+   "repos": [{"repo": "owner/name", "sha": "<12 chars>", "path": "",
+              "state": "queued|checking|done|skipped", "reason": "<why skipped>",
+              "run_id": "<id or null>", "result": "<runs|runs_with_gaps|broken|unsupported|null>",
+              "needs_approval": false, "pr": {"url": "...", "number": 1} }]}
+  ```
+
+**What the worker does.** `uv run python -m resurgo.worker [--once]` loops every 10 seconds:
+1. Take the oldest request.
+2. Validate it with the App itself. Call `GET /app/installations/{id}` with the App JWT, reusing `app_jwt`/`api` from `resurgo.pr`. A 404 makes the status `rejected` with the reason "not an installation of Resurgo Agent". Remove the request file either way.
+3. Get an installation token limited to `contents: read, metadata: read`, then list `GET /installation/repositories`. Never print the JWT or the token.
+4. Skip private repos (reason "private repositories come after the hackathon") and archived repos. Check at most 5 repositories per installation, and mark the rest as skipped with the reason.
+5. For each repo:
+   - Resolve the default branch's head SHA.
+   - Choose project paths with the git tree API (`GET /repos/{repo}/git/trees/{sha}?recursive=1`). Use the root if it has `package.json`, `foundry.toml` or `Cargo.toml`. Otherwise use the first-level directories that do, at most 3.
+   - Write every repo/path as `queued`.
+6. **One build at a time.** Don't start a run while a sweep is running on this host (a `resurgo.sweep` process exists). Wait, and keep the status `queued`.
+7. Run each repo/path with the same runner the sweep uses (reuse `sweep.run_one` if it fits; tag runs `set=install`), and update the status before (`checking`) and after (`done`, with `run_id`, `result` and `needs_approval`).
+   - If a record already exists in `runs/` for the same repo, SHA, path and agent version, reuse its result instead of running again.
+8. **Pull requests.** After a run that passed and has a `fix.patch` with no `needs_approval`, open the PR with `python -m resurgo.pr runs/<run_id>`, but only when `RESURGO_AUTO_PR=1` is set. Record the URL in the status. Without the flag, leave `pr` null.
+9. When every repo is done, set the installation's state to `done`.
+10. **Weekly re-check.** Re-queue any installation whose status was last updated more than 7 days ago. This is the weekly re-check promised to users; keep it to a few lines.
+
+**Robustness.**
+- A crash in one repo's run marks that repo `done` with result `null` and a short reason. It never stops the worker.
+- A GitHub API error leaves the request in place and retries on the next loop.
+- Log one line per state change to stdout, with no secrets.
+
+**Test.** Add one small test for the pure parts, the path choice from a tree listing and the reuse of existing records, using fixtures and no network. Run it with `uv run --with pytest pytest -q resurgo`.
+
+**Check.** You can't reach the App's key from this machine, so don't call the real GitHub App. Run `--once` against a temporary QUEUE_DIR containing a request for a made-up installation id, with the GitHub calls stubbed by a small fake in the test. Confirm that the status file comes out in the contract's shape.
+
+Commit in small steps and add a short entry to hackathon.md.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no docker commands.
+- Never open pull requests.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report.
