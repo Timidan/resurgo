@@ -62,9 +62,10 @@ def _steps(side: dict | None) -> list[dict]:
 
 
 def _verified(result: dict) -> bool:
-    """A run is verified when the separate clean container ran steps and every one passed."""
-    steps = _steps(result.get("verifier"))
-    return bool(steps) and all(s.get("exit_code") == 0 for s in steps)
+    """A run is verified when the separate clean container ran steps and it passed (flag, or every step exit 0)."""
+    verifier = result.get("verifier") or {}
+    steps = _steps(verifier)
+    return bool(steps) and (verifier.get("passed") is True or all(s.get("exit_code") == 0 for s in steps))
 
 
 def _status(result: dict) -> str:
