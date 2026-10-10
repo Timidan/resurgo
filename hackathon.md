@@ -24,6 +24,9 @@ Timidan (solo, with coding agents).
 - What works: clone, lockfile detection, corepack, the install step, both containers, the JSON record, and cleanup (no containers left after the run). One bug found on the way: corepack failed first because `~/.local/bin` did not exist in the image; fixed with `mkdir -p`.
 - First real run, Timidan/rinne at 5c3370f9a736: `result=fail`. Both containers cloned, detected pnpm and enabled corepack, then `pnpm install --frozen-lockfile` exited 1 in 26.6s (agent) and 19.5s (verifier) with `ERR_PNPM_IGNORED_BUILDS: Ignored build scripts: esbuild@0.25.12` (pnpm 12.10.1). This is the failure the plan expected, and the verifier reproduced it. Summary line: `20261010T091116Z-5c3370f Timidan/rinne@5c3370f9a736 result=fail agent=fail verifier=fail 119s agent:install exit 1`.
 - Not verified: the neatlogs trace. `NEATLOGS_API_KEY` is not set in `.env`, so the run printed a warning and skipped tracing. The tracing code is written but has never sent a span.
+- Neatlogs tracing, done properly. The old code made spans with `opentelemetry.trace.get_tracer()`, but `neatlogs.init()` uses its own provider, so nothing reached Neatlogs. Replaced it with the SDK's live `neatlogs.trace()` spans: one `WORKFLOW` span per run (repo, sha, agent_version, result) and one `TOOL` span per container step (command, exit code, duration, scrubbed output tail, error). `init()` runs once after `.env` loads, `flush()` and `shutdown()` run in `finally`, and a missing key warns and runs untraced. Installed `neatlogs[langchain]` for the LangGraph step.
+- Delivery check: `neatlogs doctor --probe` passes, including TRACE_VISIBLE and TRACE_FINALIZED. The Timidan/rinne run at 5c3370f9a736 gave the same `result=fail` (pnpm install exit 1) in 133s. I did not open the run's trace in the Neatlogs UI, so its span tree is unchecked.
+- LangGraph tracing rules are in `docs/NEATLOGS.md`. The skills repo has no `skill-menu.json`; the rules come from its Python framework reference.
 
 ## Demo
 Not available yet.
@@ -31,7 +34,6 @@ Not available yet.
 ## Known limitations and next steps
 - Node only (pnpm, yarn, npm); no Foundry or Rust yet.
 - No agent loop: the run reports a failure and does not diagnose or fix it.
-- neatlogs tracing is untested until a key is set. Spans are emitted after the run with the recorded timestamps, because the result tag must be known when neatlogs starts.
 - The `resurgo-runs` network is created if missing and left in place after runs.
 
 ## Submission
