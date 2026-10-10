@@ -74,5 +74,6 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 
 /** A word in the amber highlighter: evidence only. */
 export function Mark({ children }: { children: ReactNode }) {
-  return <mark className="rounded-[0.15em] bg-evidence px-[0.12em] text-on-evidence">{children}</mark>;
+  // inline-block keeps the highlight inside its own line box, so it never covers the line above.
+  return <mark className="inline-block rounded-[0.15em] bg-evidence px-[0.12em] text-on-evidence">{children}</mark>;
 }

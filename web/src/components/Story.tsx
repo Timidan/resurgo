@@ -123,7 +123,9 @@ export function Story({
         </Win>
 
         <Win title={`resurgo run ${detail.result.repo}@${detail.result.sha}`} rise={f.rise[2]}>
-          <div className="flex h-[17.5rem] flex-col justify-end overflow-hidden px-4 py-3 font-mono text-[13px] leading-relaxed text-terminal-ink">
+          <div
+            className="flex h-[17.5rem] flex-col justify-end overflow-hidden px-4 py-3 font-mono text-[13px] leading-relaxed text-terminal-ink [mask-image:linear-gradient(to_bottom,transparent,black_1.75rem)]"
+          >
             {f.rows.map((r) => (
               <div key={r.key} className="shrink-0">
                 <div className="flex items-baseline gap-2">
@@ -180,11 +182,11 @@ export function Story({
                       tl.state === "done" ? (tl.ok ? "border-runs/40 bg-runs-soft" : "border-broken/40 bg-broken-soft") : "border-border bg-panel",
                     )}
                   >
-                    <p className="font-mono text-sm font-semibold">
+                    <p className="flex items-baseline gap-1.5 font-mono text-[13px] font-semibold">
                       <span className={tl.state === "done" ? (tl.ok ? "text-runs" : "text-broken") : "text-muted-foreground"}>
                         {tl.state === "done" ? (tl.ok ? "✓" : "✗") : tl.state === "running" ? tl.spinner : "·"}
-                      </span>{" "}
-                      {tl.name}
+                      </span>
+                      <span className="min-w-0 truncate">{tl.name}</span>
                     </p>
                     <p className="mt-1 h-4 font-mono text-xs tabular-nums text-muted-foreground">{tl.time}</p>
                   </li>

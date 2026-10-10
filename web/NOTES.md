@@ -33,8 +33,20 @@ For front-end work: `npm run dev --prefix web` (Vite proxies `/api` to 127.0.0.1
 
 SmoothUI (via the shadcn registry): `ai-task-list`, `ai-reasoning`, `ai-diff`, `siri-orb` (+ its `ai-core`) in `src/components/smoothui/`. One colour tweak in `ai-diff` for contrast on the dark canvas.
 
+## Second pass: Daylight lab, choreography, agent view
+
+- **Theme**: tokens are `docs/reference/tokens.css` verbatim in `src/index.css`. Light by default; the sun/moon toggle saves `resurgo-theme` in localStorage (try/catch) and `index.html` applies it before paint. No saved choice: the system preference decides. Logo is the brand wordmark SVG chosen by theme; no hard-coded colours remain (SmoothUI diff/task-list/orb now use tokens).
+- **Hero** (`components/Story.tsx`, `lib/story.ts`): `frameAt(story, t)` is a pure function of time over the real run record. Windows rise over 0.6 s, 0.55 s apart; rationale streams at 35 cps (first sentence of each attempt, cut at a word if long, so it is an excerpt, not a rewrite); commands are typed with the sample's per-character variance; timers count up to the recorded durations. Loops after 4.5 s, pauses off screen, reduced motion shows the final frame.
+- **Live tiles**: latest run per repo with its recorded status; only the spotlight (and the visible window when there are more than six repos) moves, every 3-5 s.
+- **Chat**: input matches `owner/name` or a github.com URL against the gallery and replays that run through the same Story. No match: "Live checks open with the GitHub App." and the list of replayable repos. Nothing is invented.
+- **Solution tabs** advance on their own (hover/focus/click holds them), stream a real excerpt, and omit any stat with no measurement.
+- **Status fix**: `api/main.py` judges legacy `fixed`/`fail` records by their verifier steps: all passed means Runs (or Runs with gaps if the record lists gaps); "Fixed, unverified" only when there are no verifier steps. `verified` is in every summary.
+- **/api/runs** now carries steps, attempts, rationale, error line, problem evidence and a patch preview, so the landing page fetches only the featured run's record. Records are cached by mtime.
+- **Agent view**: `/index.md` and `/llms.txt` are generated from the live records; footer link "Agent view".
+
 ## Not done
 
-- Browser-level check (screenshots, axe, keyboard pass): not available in the build session.
+- Axe and a scripted keyboard walk were not run; checked by headless-Chromium screenshots in both themes and by reading the focus styles (2 px accent-strong outline, roving tabindex on tabs). Brand tokens carry their own contrast ratios; the pairs added here (`canvas` on `runs`/`broken`/`gaps` bars, `on-accent` on `accent-strong`) were not re-measured.
+- Animation mid-states were not captured frame by frame, only the final state.
 - No GitHub App flow, checkout, or projects view with "Check now".
 - Landing section 8 (product tabs) is merged into section 7, as the plan allows.

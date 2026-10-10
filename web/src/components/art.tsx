@@ -45,7 +45,7 @@ export function BackgroundArt() {
       />
       <motion.svg
         viewBox="0 0 16 16"
-        className="absolute -right-[12vw] top-[4vh] h-[110vh] w-auto text-accent opacity-35"
+        className="absolute -right-[12vw] top-[4vh] h-[110vh] w-auto text-accent opacity-[0.16]"
         style={reduce ? undefined : { y }}
         fill="none"
         stroke="currentColor"
