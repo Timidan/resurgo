@@ -1,0 +1,47 @@
+<task-notification>
+<task-id>b7zbjdy22</task-id>
+<tool-use-id>toolu_01KHUMGAiGEiQjqXSqsLkUek</tool-use-id>
+<output-file>/tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/tasks/b7zbjdy22.output</output-file>
+<status>failed</status>
+<summary>Background command "cd /home/timidan/Desktop/resurgo &amp;&amp; uv run python -m resurgo.run chroxify/feedbase 18dca32a923e &gt; /tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/scratchpad/feedbase2.log 2&gt;&amp;1" failed with exit code 1</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bv3spbgrq</task-id>
+<tool-use-id>toolu_01EfbfzdvxwW1w4JHNLHd6oV</tool-use-id>
+<output-file>/tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/tasks/bv3spbgrq.output</output-file>
+<status>failed</status>
+<summary>Background command "cd /home/timidan/Desktop/resurgo &amp;&amp; uv run python -m resurgo.run Timidan/sentry-somnia e1875a06dde6 &gt; /tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/scratchpad/sentry.log 2&gt;&amp;1" failed with exit code 1</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b08jvqcpv</task-id>
+<tool-use-id>toolu_01UiSYA3tdiaVbAWVy5tsTok</tool-use-id>
+<output-file>/tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/tasks/b08jvqcpv.output</output-file>
+<status>completed</status>
+<summary>Background command "cd /home/timidan/Desktop/resurgo &amp;&amp; uv run python -m resurgo.run buqiyuan/electron-vite-monorepo 6ead2579915d &gt; /tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/scratchpad/electron.log 2&gt;&amp;1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b2xqcdk6g</task-id>
+<tool-use-id>toolu_01Dy4RF7cVStQFTcvdt2JEoF</tool-use-id>
+<output-file>/tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/tasks/b2xqcdk6g.output</output-file>
+<status>completed</status>
+<summary>Background command "uv run python -m resurgo.run Timidan/rinne 5c3370f9a736 &gt; /tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/scratchpad/rinne.log 2&gt;&amp;1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bhe9gccja</task-id>
+<tool-use-id>toolu_01L7Ndfg5L7TeFSFFBz3YPdR</tool-use-id>
+<output-file>/tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/tasks/bhe9gccja.output</output-file>
+<status>failed</status>
+<summary>Background command "uv run python -m resurgo.run Timidan/agent-arena f6fc3243ac98 --path commentator &gt; /tmp/claude-1000/-home-timidan-Desktop-resurgo/c56a2740-7fbf-40d5-8221-b64594d3c40f/scratchpad/arena.log 2&gt;&amp;1" failed with exit code 1</summary>
+</task-notification>
