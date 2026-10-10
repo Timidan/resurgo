@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from resurgo import __version__
 from resurgo.agent import build_graph
 from resurgo.gateway import GatewayChat
-from resurgo.project import (CAP_MINUTES, FOUNDRY_RELEASE, MANIFESTS, detect_type, dummy_env, family,
+from resurgo.project import (BUILD_NODE_OPTIONS, CAP_MINUTES, FOUNDRY_RELEASE, MANIFESTS, detect_type, dummy_env, family,
                              has_real_test, needs_secret, rust_version, scripts)
 from resurgo.rules import BASELINE_NODE, LOCKFILES, RULE_FILES, node_major, parse_major
 
@@ -29,7 +29,7 @@ NETWORK = "resurgo-runs"
 NODE_HOME, OTHER_HOME = "/home/node", "/tmp/home"
 PROBE = Path(__file__).with_name("probe.js").read_text()
 TAIL_LINES = 60
-LIMITS = ["--cpus", "2", "--memory", "4g", "--pids-limit", "512",
+LIMITS = ["--cpus", "2", "--memory", "6g", "--pids-limit", "512",
           "--cap-drop", "ALL", "--security-opt", "no-new-privileges"]
 # Frozen and regenerating install commands per package manager.
 INSTALL = {"pnpm": ("pnpm install --frozen-lockfile", "pnpm install --no-frozen-lockfile"),
@@ -347,7 +347,7 @@ class Box:
         if t == "foundry":
             return cmds + [("build", f"cd {p} && forge build"), ("test", f"cd {p} && forge test")]
         if self.has_build:
-            cmds.append(("build", f"cd {p} && {pm} run build"))
+            cmds.append(("build", f"cd {p} && NODE_OPTIONS={BUILD_NODE_OPTIONS} {pm} run build"))
         if t == "web_app":
             cmds.append(("serve", self.serve_cmd(pm, files)))
         elif t == "desktop":

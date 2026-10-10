@@ -10,8 +10,9 @@ import re
 WEB_DEPS = {"next", "nuxt", "vite", "express", "fastify", "koa", "hono", "@nestjs/core",
             "react-scripts", "@remix-run/dev", "@remix-run/node", "astro", "@sveltejs/kit",
             "gatsby", "@hapi/hapi", "@angular/cli"}
-CAP_MINUTES = {"node": 15, "foundry": 10, "rust": 25}   # time cap per toolchain family
+CAP_MINUTES = {"node": 25, "foundry": 10, "rust": 25}   # time cap per toolchain family
 FOUNDRY_RELEASE = "v1.8.5"
+BUILD_NODE_OPTIONS = "--max-old-space-size=4096"   # heap for build steps (container has 6 GB)
 MANIFESTS = ["package.json", "pnpm-workspace.yaml", "foundry.toml", "Cargo.toml",
              "rust-toolchain", "rust-toolchain.toml", ".env.example"]
 SECRETISH = re.compile(r"KEY|SECRET|TOKEN|PASSWORD|PASSWD|URL|URI|DSN|DATABASE|CLIENT_ID|MNEMONIC|"
