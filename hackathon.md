@@ -60,6 +60,8 @@ Timidan (solo, with coding agents).
 
 - Foundry and Rust now have one real passing run each; neither needed a fix, so the repair loop has not been exercised on them. Feedbase takes about 38 minutes in total (both containers), so a held-out sweep with several large monorepos will run for hours.
 
+- Pull-request step: `uv run python -m resurgo.pr <run dir> [--dry-run]` (`resurgo/pr.py`). Guards (`refusal()`): the verifier passed, `fix.patch` is non-empty, the run's commit is still the default-branch head (the 12-character SHA is resolved to the full one through the API), and no PR from `resurgo/fix-<run_id>` exists in any state. `--dry-run` uses only the public API and prints the title and body. A real run signs an App JWT with `openssl`, finds the installation (404 means the App is not installed, so it refuses), gets a one-repo installation token, applies exactly `fix.patch` on the fetched commit, pushes `resurgo/fix-<run_id>` through an env-var credential helper, opens the PR and writes `pr` into `result.json`. Dry-run checked on the agent-arena and rinne records; the real path has never run, because the App key is not on this machine.
+
 ## Demo
 Not available yet.
 
