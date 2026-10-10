@@ -28,12 +28,19 @@ Timidan (solo, with coding agents).
 - Delivery check: `neatlogs doctor --probe` passes, including TRACE_VISIBLE and TRACE_FINALIZED. The Timidan/rinne run at 5c3370f9a736 gave the same `result=fail` (pnpm install exit 1) in 133s. I did not open the run's trace in the Neatlogs UI, so its span tree is unchecked.
 - LangGraph tracing rules are in `docs/NEATLOGS.md`. The skills repo has no `skill-menu.json`; the rules come from its Python framework reference.
 
+- Milestone 2a, the agent loop for Node projects. `--path <subdir>` runs a project inside a repo. When install or build fails, a LangGraph loop runs: deterministic rules first (Node major from `engines.node`, `.nvmrc`, `.node-version` or volta; package manager from the `packageManager` field or the lockfile format; each is written as a file fix), then diagnose, propose strict JSON, apply config fixes in the container, and rerun. Budget: 4 fix attempts (a rule candidate counts as one) and 15 minutes. Code fixes are recorded as `needs_approval`, never applied. Invalid JSON is re-asked once and recorded as recovery. The model gateway is wrapped as a LangChain chat model so neatlogs records each call; token counts are estimates (characters / 4) and labelled so. A run is `fixed` only if a fresh container, applying only `fix.patch` to a clean clone, passes install and build.
+- Real runs, one each. Timidan/rinne at 5c3370f9a736: `fixed`, 3 model calls, 694s. The model first set `pnpm.onlyBuiltDependencies` in package.json, then moved it to `pnpm-workspace.yaml`, then used `allowBuilds` (pnpm 12 no longer reads the older settings). Install passed on the third fix and the verifier passed. The patch still contains the two earlier, ineffective edits. Timidan/agent-arena at f6fc3243ac98 with `--path commentator`: `fixed`, 1 model call, 570s. Install failed compiling better-sqlite3 against Node 24 (277s); the model wrote `commentator/.nvmrc` with `20`; install and build then passed in the agent and in the verifier. No rule fired in either run.
+- Bugs found on the way: a `docker exec -i` with no stdin hung forever on a missing file (the first rinne attempt ran 10 minutes before the harness killed it and left a container, which I removed); and the `--path` directory check used the wrong base, failing the first agent-arena run at clone (not a repo result; that run was discarded and redone).
+- Not verified: the neatlogs trace hierarchy (LLM and CHAIN spans under the WORKFLOW span) was not opened in the UI. The runs sent spans, but I did not check them.
+
 ## Demo
 Not available yet.
 
 ## Known limitations and next steps
 - Node only (pnpm, yarn, npm); no Foundry or Rust yet.
-- No agent loop: the run reports a failure and does not diagnose or fix it.
+- The patch is cumulative: edits from failed attempts stay in it. Reverting them before the final diff is not done.
+- Reruns always start from install. Lockfile regeneration (an empty-content lockfile entry) and npm pins are implemented but have not been exercised on a real repo.
+- The 15-minute budget covers the fix loop, not the verifier. Many per-file `docker exec` calls on the remote host made runs slow before reads were batched.
 - The `resurgo-runs` network is created if missing and left in place after runs.
 
 ## Submission
