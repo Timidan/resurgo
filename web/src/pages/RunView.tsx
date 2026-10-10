@@ -372,6 +372,12 @@ function RunBody({ d }: { d: RunDetail }) {
                       {a.confidence != null ? ` · confidence ${a.confidence}` : ""}
                     </p>
                     <p className="mt-1 text-foreground">{a.rationale}</p>
+                    {a.graph_context && (
+                      <p className="mt-1 text-xs">
+                        Repository context from entire-graph: {a.graph_context.files.length} code regions (
+                        {[...new Set(a.graph_context.files.map((f) => f.split(":")[0]))].join(", ")})
+                      </p>
+                    )}
                     <p className="mt-1 text-xs">
                       <span aria-hidden className="font-mono">{a.status === "needs_approval" ? "◐" : a.result === "passed" ? "✓" : "✗"} </span>
                       Result: {a.status === "needs_approval" ? (awaiting ? "needs approval, tested only in the sandbox" : "needs approval, not applied") : a.result}

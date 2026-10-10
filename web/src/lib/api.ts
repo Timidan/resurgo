@@ -20,6 +20,7 @@ export type Attempt = {
   result?: string;
   status?: string;
   recovered_from_invalid_json?: boolean;
+  graph_context?: { query: string; files: string[]; bytes: number; ms: number } | null;
   files_content?: { path: string; content: string }[];
 };
 
