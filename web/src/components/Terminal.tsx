@@ -61,7 +61,7 @@ export function Terminal({
           }
           const lines = (r.lines ?? []).map(cleanLine).filter((l) => l.trim() !== "");
           const expanded = open[r.id];
-          const shown = compact ? lines.slice(-4) : expanded ? lines : lines.slice(-tailLines);
+          const shown = compact ? lines.slice(-tailLines) : expanded ? lines : lines.slice(-tailLines);
           const hidden = compact ? 0 : lines.length - shown.length;
           return (
             <li key={r.id} className="border-b border-border/60 px-3 py-2 last:border-b-0">

@@ -118,7 +118,7 @@ function Hero({ data }: { data: LandingData }) {
           </Reveal>
           {failed && (
             <Reveal delay={0.25} x={24}>
-              <Terminal title="premise check · agent container" rows={stepRows([failed], "h")} compact tailLines={6} />
+              <Terminal title="premise check · agent container" rows={stepRows([failed], "h")} compact tailLines={7} />
             </Reveal>
           )}
           {proof.length > 0 && (
@@ -220,7 +220,7 @@ function Steps({ data }: { data: LandingData }) {
             <p className="mt-4 max-w-md text-lg text-muted-foreground">{it.body}</p>
           </Reveal>
           <Reveal delay={0.15} x={i % 2 ? -24 : 24}>
-            <Terminal title={`${f.result.repo} · ${it.title.toLowerCase()}`} rows={it.rows} compact />
+            <Terminal title={`${f.result.repo} · ${it.title.toLowerCase()}`} rows={it.rows} compact tailLines={4} />
           </Reveal>
         </div>
       ))}

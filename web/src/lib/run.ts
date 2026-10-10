@@ -101,7 +101,9 @@ export function buildTasks(result: RunResult): AITask[] {
       note: runs > 1 ? `${runs} runs` : fmtDur(s.duration_s),
     };
   });
-  const failedStage = tasks.find((t) => t.status === "failed");
+  // Repairs hang off the first stage that ever failed, even if a later attempt got it through.
+  const firstFailed = steps.find((s) => !stepOk(s));
+  const failedStage = firstFailed ? tasks[order.indexOf(firstFailed.name)] : undefined;
   const repairs: AITask[] = attempts.map((a, i) => ({
     id: `fix-${i}`,
     label: `Repair ${i + 1}: ${a.kind ?? "fix"} in ${(a.files ?? []).join(", ") || "—"}`,
@@ -127,6 +129,7 @@ const STAGE_LABEL: Record<string, string> = {
   clone: "Fresh clone at the pinned commit",
   toolchain: "Prepare the toolchain",
   detect: "Detect the package manager",
+  env: "Fill .env with dummy values",
   install: "Install dependencies",
   build: "Build",
   test: "Run tests",
