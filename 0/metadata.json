@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4K8DDZ51VT4XGS94SPNY9QS",
+  "session_id": "f969ef26-42c7-4a60-b0f8-fcd9fd7667f5",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T15:55:26.675808898Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "resurgo/agent.py",
+    "resurgo/pr.py",
+    "resurgo/sweep.py",
+    "resurgo/test_pr.py",
+    "resurgo/test_sweep.py"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "53b6906d8763",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 64,
+    "cache_creation_tokens": 100524,
+    "cache_read_tokens": 3219673,
+    "output_tokens": 30305,
+    "api_call_count": 32
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-10T15:55:26.652952326Z",
+    "agent_lines": 60,
+    "agent_removed": 28,
+    "human_added": 2,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 62,
+    "total_lines_changed": 91,
+    "agent_percentage": 96.7032967032967,
+    "metric_version": 2
+  }
+}
