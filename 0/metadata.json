@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4JWSFNHAA20GWGXWQNRJEJE",
+  "session_id": "fa10fe7b-9b09-4ac5-9ad7-39c716e71cfa",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T12:32:18.628972203Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "resurgo/sweep.py",
+    "resurgo/test_sweep.py"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "38ac7c66a328",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 82,
+    "cache_creation_tokens": 86397,
+    "cache_read_tokens": 3658677,
+    "output_tokens": 32177,
+    "api_call_count": 41
+  }
+}
