@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { useReducedMotion } from "motion/react";
+import { animate, useReducedMotion } from "motion/react";
 import { AnimIcon, type IconName } from "@/components/art";
 import { panelId, tabId, TabList } from "@/components/Tabs";
 import type { RunDetail } from "@/lib/api";
+import { EASE_ENTER } from "@/lib/ease";
 import { cleanLine, fmtDur, parsePatch, statusMeta, stepOk } from "@/lib/run";
 import { readingMs, useStream } from "@/lib/stream";
 import { cn } from "@/lib/utils";
@@ -92,14 +93,87 @@ function contentFor(tab: TabKey, d: RunDetail): Content {
   return { title: `${r.repo} · clean container`, lines, stats };
 }
 
-/** Check, Diagnose, Repair, Prove: each tab streams a real excerpt and shows real stat cards. */
-export function SolutionTabs({ detail }: { detail: RunDetail }) {
+/** The beam's staging: icons draw first (about 1 s), then one beam runs the connector in 1.4 s. */
+const BEAM_LEAD_MS = 1100;
+const BEAM_MS = 1400;
+
+/** The node that sits at the start of one stage on the connector. Its fill comes on as the beam leaves it. */
+const BeamNode = ({ i }: { i: number }) => (
+  <span aria-hidden className="beam-node" style={{ "--i": i } as CSSProperties}>
+    <span className="beam-node-fill" />
+  </span>
+);
+
+/** The stretch of connector from one stage to the next (none after the last). */
+const BeamSegment = ({ i }: { i: number }) => (
+  <span aria-hidden className="beam-seg" style={{ "--i": i } as CSSProperties}>
+    <span className="beam-fill" />
+    <span className="beam-head" />
+  </span>
+);
+
+/**
+ * Check, Diagnose, Repair, Prove: each tab streams a real excerpt and shows real stat cards.
+ * A single beam runs the connector between the four stages once, when the list first comes into
+ * view, and the connector then holds its drawn state. Nothing else in the section moves while it
+ * runs: the excerpt and the stat tickers wait for `onBeamDone`.
+ */
+export function SolutionTabs({ detail, onBeamDone }: { detail: RunDetail; onBeamDone?: () => void }) {
   const reduce = useReducedMotion();
   const [tab, setTab] = useState<TabKey>("check");
   const [manual, setManual] = useState(false);
   const [held, setHeld] = useState(false);
   const [inView, setInView] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+
+  // The beam: --beam (0 to 1) is written on the connector's wrapper; every segment and node reads its part.
+  const rail = useRef<HTMLDivElement>(null);
+  const [beamDone, setBeamDone] = useState(false);
+  const beamCb = useRef(onBeamDone);
+  beamCb.current = onBeamDone;
+  const [railSeen, setRailSeen] = useState(false);
+  useEffect(() => {
+    const el = rail.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setRailSeen(true);
+      return;
+    }
+    // Also counts as seen when the list is already above the viewport (a jump or a restored scroll).
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting || e.boundingClientRect.top < 0) {
+        setRailSeen(true);
+        io.disconnect();
+      }
+    }, { rootMargin: "0px 0px -20% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    const el = rail.current;
+    if (!railSeen || !el || beamDone) return;
+    const finish = () => {
+      setBeamDone(true);
+      beamCb.current?.();
+    };
+    if (reduce) {
+      el.style.setProperty("--beam", "1");
+      finish();
+      return;
+    }
+    let run: { stop: () => void } | undefined;
+    const lead = window.setTimeout(() => {
+      run = animate(0, 1, {
+        duration: BEAM_MS / 1000,
+        ease: EASE_ENTER,
+        onUpdate: (v) => el.style.setProperty("--beam", String(v)),
+        onComplete: finish,
+      });
+    }, BEAM_LEAD_MS);
+    return () => {
+      window.clearTimeout(lead);
+      run?.stop();
+    };
+  }, [railSeen, reduce, beamDone]);
 
   useEffect(() => {
     const el = box.current;
@@ -122,16 +196,16 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
 
   const c = useMemo(() => contentFor(shownTab, detail), [shownTab, detail]);
   const joined = c.lines.map((l) => l.text).join("\n");
-  const { shown, done } = useStream(joined, { restartKey: shownTab, enabled: inView || manual });
+  const { shown, done } = useStream(joined, { restartKey: shownTab, enabled: (inView || manual) && beamDone });
 
   // Stay long enough to read what streamed, plus the stat labels: 250 ms and 30 ms a word.
   const readMs = Math.max(1800, readingMs(`${joined} ${c.stats.map((s) => `${s.label} ${s.value}`).join(" ")}`));
   useEffect(() => {
-    if (reduce || manual || held || !done || !inView || shownTab !== tab) return;
+    if (reduce || manual || held || !done || !inView || !beamDone || shownTab !== tab) return;
     const i = TABS.findIndex((t) => t.id === tab);
     const id = window.setTimeout(() => setTab(TABS[(i + 1) % TABS.length].id), readMs);
     return () => window.clearTimeout(id);
-  }, [reduce, manual, held, done, inView, tab, shownTab, readMs]);
+  }, [reduce, manual, held, done, inView, beamDone, tab, shownTab, readMs]);
 
   const visible = shown.split("\n");
 
@@ -144,6 +218,7 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
     >
+      <div ref={rail} className="min-w-0">
       <TabList
         prefix="sol"
         label="Stages"
@@ -154,15 +229,16 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
           if (byUser) setManual(true);
           setTab(id);
         }}
-        className="flex gap-2 overflow-x-auto lg:flex-col"
+        className="flex gap-2 overflow-x-auto pt-5 lg:flex-col lg:overflow-visible lg:pl-5 lg:pt-0"
         tabClassName={(sel) =>
           cn(
-            "chip-t flex min-w-40 items-start gap-3 rounded-lg border px-4 py-3 text-left",
+            "chip-t relative flex min-w-40 items-start gap-3 rounded-lg border px-4 py-3 text-left",
             sel ? "border-accent-strong bg-panel" : "border-transparent text-muted-foreground hover:bg-panel",
           )
         }
         render={(t) => {
           const tt = TABS.find((x) => x.id === t.id)!;
+          const n = TABS.indexOf(tt);
           return (
             <>
               <AnimIcon name={tt.icon} className="mt-0.5 size-5 shrink-0" />
@@ -170,10 +246,13 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
                 <span className="block font-semibold text-foreground">{tt.label}</span>
                 <span className="mt-0.5 hidden text-sm lg:block">{tt.blurb}</span>
               </span>
+              {n < TABS.length - 1 && <BeamSegment i={n} />}
+              <BeamNode i={n} />
             </>
           );
         }}
       />
+      </div>
       <div role="tabpanel" id={panelId("sol", tab)} aria-labelledby={tabId("sol", tab)} className="min-w-0 rounded-xl border border-border bg-panel p-4 sm:p-6">
         <div className="overflow-hidden rounded-lg border border-border bg-terminal text-terminal-ink">
           <p className="border-b border-border bg-panel px-3 py-2 font-mono text-xs text-muted-foreground">{c.title}</p>

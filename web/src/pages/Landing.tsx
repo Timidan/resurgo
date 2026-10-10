@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Logo, LogoImage, type ImageName } from "@/components/Logo";
 import AIReasoning from "@/components/smoothui/ai-reasoning";
 import { LiveTiles } from "@/components/LiveTiles";
+import { NumberTicker } from "@/components/NumberTicker";
 import { RepoChat } from "@/components/RepoChat";
 import { SolutionTabs } from "@/components/SolutionTabs";
 import { Story, StorySkeleton } from "@/components/Story";
@@ -304,11 +305,19 @@ function Problem({ data }: { data: LandingData }) {
   );
 }
 
-function StatBlock({ g, lead }: { g: StatGroup; lead: string | null }) {
+/** A median over fewer fixes than this carries its count in the label. */
+const FEW = 5;
+
+function StatBlock({ g, lead, hold }: { g: StatGroup; lead: string | null; hold: boolean }) {
+  const whole = (n: number) => String(Math.round(n));
+  // A median over a handful of fixes says little: show how many it is taken over.
+  const fewFixes = g.medianN < FEW ? ` (${g.medianN} ${g.medianN === 1 ? "fix" : "fixes"})` : "";
   const stats = [
-    { k: "Repos checked", v: String(g.repos) },
-    { k: "Verified in a clean container", v: String(g.verified) },
-    ...(g.medianVerifiedS != null ? [{ k: "Median wall time of a verified fix", v: fmtDur(g.medianVerifiedS) }] : []),
+    { k: "Repos checked", v: g.repos, format: whole },
+    { k: "Verified in a clean container", v: g.verified, format: whole },
+    ...(g.medianVerifiedS != null
+      ? [{ k: `Median wall time of a verified fix${fewFixes}`, v: g.medianVerifiedS, format: fmtDur }]
+      : []),
   ];
   return (
     <div className="min-w-0">
@@ -319,7 +328,9 @@ function StatBlock({ g, lead }: { g: StatGroup; lead: string | null }) {
       <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
         {stats.map((s) => (
           <div key={s.k} className="bg-canvas p-6">
-            <dd className="font-mono text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl">{s.v}</dd>
+            <dd className="font-mono text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl">
+              <NumberTicker value={s.v} format={s.format} hold={hold} />
+            </dd>
             <dt className="mt-2 text-muted-foreground">{s.k}</dt>
           </div>
         ))}
@@ -338,6 +349,8 @@ function Solution({ data }: { data: LandingData }) {
   const f = data.featured;
   if (!f) return null;
   const st = data.stats;
+  // The beam in the tabs runs first; the numbers below count up only after it has finished.
+  const [beamDone, setBeamDone] = useState(false);
   const compare = st.length > 1 && st.every((g) => g.set === "heldout");
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
@@ -345,14 +358,14 @@ function Solution({ data }: { data: LandingData }) {
         <Eyebrow>How it works</Eyebrow>
         <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Check. Diagnose. Repair. Prove.</h2>
       </Reveal>
-      <SolutionTabs detail={f} />
+      <SolutionTabs detail={f} onBeamDone={() => setBeamDone(true)} />
 
       {st.length > 0 && (
         <Reveal className="mt-16">
           {/* Two agent versions of the held-out set: the older is the before, the newest the after. Otherwise each block stands alone. */}
           <div className={cn("grid gap-8", st.length > 1 && "lg:grid-cols-2")}>
             {(compare ? [st[0], st[st.length - 1]] : st).map((g, i) => (
-              <StatBlock key={g.key} g={g} lead={compare ? (i === 0 ? "Before" : "After") : null} />
+              <StatBlock key={g.key} g={g} lead={compare ? (i === 0 ? "Before" : "After") : null} hold={!beamDone} />
             ))}
           </div>
           <p className="mt-3 text-sm text-muted-foreground">

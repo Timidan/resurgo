@@ -38,6 +38,8 @@ export type StatGroup = {
   /** Repos whose fix only skipped tests: never counted as verified. */
   skipped: number;
   medianVerifiedS: number | null;
+  /** How many fixes the median was taken over. */
+  medianN: number;
 };
 
 const median = (xs: number[]) => {
@@ -100,6 +102,7 @@ function statGroups(real: RunSummary[]): StatGroup[] {
       verified: verified.length,
       skipped: skipped.length,
       medianVerifiedS: median(times),
+      medianN: times.length,
     };
   });
   const heldout = groups.filter((g) => g.set === "heldout");
