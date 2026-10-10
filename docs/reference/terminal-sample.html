@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resurgo — rinne repair replay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Resurgo brand: Daylight lab. Light by default, dark via [data-theme="dark"] or the system preference. */
+:root {
+  --canvas: #F3F6FA; --panel: #FFFFFF; --muted: #EAEFF5;
+  --ink: #0F1720; --ink-2: #2A3441; --secondary: #55606E;
+  --hairline: #DCE3EC; --control: #C6D0DC;
+  --accent: #2F6BFF;          /* art, focus rings, large accents */
+  --accent-strong: #2459E8;   /* buttons with white text (5.7:1), links */
+  --on-accent: #FFFFFF;
+  --evidence: #E6FB63; --on-evidence: #0F1720;   /* highlighter for fixes and proof */
+  --runs: #127A4A;  --runs-soft: #E2F3EA;
+  --gaps: #8A6400;  --gaps-soft: #FBF1D2;
+  --broken: #BE3A2E; --broken-soft: #FBE7E3;
+  --checking: #2459E8; --checking-soft: #E7EEFF;
+  --terminal: #FFFFFF; --terminal-ink: #0F1720;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
+  --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
+  --hairline: #263244; --control: #33415A;
+  --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+  --evidence: #D9F24A; --on-evidence: #0F1720;
+  --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+  --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
+  --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
+  --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+  --terminal: #121A27; --terminal-ink: #EEF2F7;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
+    --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
+    --hairline: #263244; --control: #33415A;
+    --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+    --evidence: #D9F24A; --on-evidence: #0F1720;
+    --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+    --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
+    --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
+    --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+    --terminal: #121A27; --terminal-ink: #EEF2F7;
+    color-scheme: dark;
+  }
+}
+
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font-family:Arial,sans-serif}button{font:inherit}main{width:1280px;height:720px;padding:40px 48px 28px;position:relative;transform-origin:top left}.mast{display:flex;align-items:center;justify-content:space-between;margin-bottom:29px}.brand{font-size:26px;font-weight:700;letter-spacing:-1px;display:flex;gap:10px;align-items:center}.mark{width:25px;height:25px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:23px;border-radius:6px}.eyebrow{font:12px 'JetBrains Mono',monospace;color:var(--secondary);letter-spacing:1px;text-transform:uppercase}h1{font-size:32px;font-weight:500;letter-spacing:-1.2px;margin:0 0 21px}.workspace{display:grid;grid-template-columns:816px 344px;gap:24px}.window{background:var(--terminal);border:1px solid var(--hairline);border-radius:12px;box-shadow:0 16px 40px #0f17200c;overflow:hidden}.terminal{height:486px}.chrome{height:45px;display:flex;align-items:center;border-bottom:1px solid var(--hairline);padding:0 18px;gap:7px;background:var(--panel);font:12px 'JetBrains Mono',monospace;color:var(--secondary)}.dot{width:9px;height:9px;border-radius:50%;background:var(--control)}.dot:first-child{background:var(--broken)}.dot:nth-child(2){background:var(--gaps)}.dot:nth-child(3){background:var(--runs)}.tab{margin-left:16px}.body{padding:17px 22px;font:14px/1.65 'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--terminal-ink)}.preflight{font-size:11px;color:var(--secondary);padding-bottom:10px;border-bottom:1px solid var(--hairline);margin-bottom:10px}.line{white-space:pre-wrap;overflow-wrap:anywhere;min-height:23px}.muted{color:var(--secondary)}.good{color:var(--runs)}.bad{color:var(--broken)}.fix{display:flex;gap:10px;align-items:center;margin:5px 0}.fix mark{background:var(--evidence);color:var(--on-evidence);padding:1px 7px;border-radius:3px;flex:1;font-size:12px}.fix .result{font-size:12px;white-space:nowrap}.diff{margin:9px 0 10px;border-left:2px solid var(--evidence);padding-left:12px;font-size:13px;line-height:1.55}.diff .added{background:var(--evidence);color:var(--on-evidence);width:max-content;max-width:100%;padding-right:12px}.separator{font-size:12px;color:var(--secondary);border-top:1px solid var(--hairline);padding-top:9px;margin:10px 0 8px}.prompt{color:var(--accent);margin-right:8px}.command{font-size:13px;min-height:23px}.cursor{display:inline-block;background:var(--terminal-ink);height:15px;width:8px;vertical-align:-2px;margin-left:2px}.running{display:flex;justify-content:space-between;color:var(--secondary);font-size:12px;margin:7px 0}.output{font-size:13px;line-height:1.65}.verdict{display:flex;align-items:center;gap:12px;background:var(--runs-soft);color:var(--runs);padding:11px 13px;border-radius:5px;margin-top:11px;font-size:14px}.verdict small{font-size:11px;color:var(--secondary);margin-left:auto}.agent{margin-top:24px;height:450px;position:relative}.agent .chrome{justify-content:space-between}.agent-body{padding:15px 18px}.agent-card{padding:0 0 13px;margin-bottom:13px;border-bottom:1px solid var(--hairline);opacity:0}.agent-card:last-child{border-bottom:0;margin-bottom:0}.agent-heading{display:flex;justify-content:space-between;font:11px 'JetBrains Mono',monospace;color:var(--secondary);margin-bottom:7px}.agent-card p{font:13px/1.55 'JetBrains Mono',monospace;margin:0;color:var(--ink-2)}.agent-card.active .agent-heading{color:var(--accent)}.foot{display:flex;align-items:center;justify-content:space-between;margin-top:18px;color:var(--secondary);font:11px 'JetBrains Mono',monospace}.controls{display:flex;gap:12px}button{background:transparent;border:0;color:var(--secondary);padding:3px;cursor:pointer;font-size:11px}button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.progress{height:2px;background:var(--hairline);position:absolute;bottom:0;left:0;right:0}.progress div{height:2px;background:var(--accent);width:0}.capture .controls{visibility:hidden} @media(prefers-reduced-motion:reduce){.cursor{visibility:hidden}}
+</style>
+</head>
+<body>
+<main>
+<header class="mast"><div class="brand"><span class="mark" aria-hidden="true">↗</span>resurgo</div><span class="eyebrow">Real run / Timidan/rinne</span></header>
+<h1>Three attempts. One verified repair.</h1>
+<div class="workspace">
+<section class="window terminal" aria-label="Repair terminal"><div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="tab">resurgo — Timidan/rinne@5c3370f</span></div><div class="body" id="terminal"></div></section>
+<aside class="window agent" aria-label="Agent rationale excerpts"><div class="chrome"><span>agent / reasoning excerpts</span><span>↗</span></div><div class="agent-body" id="agent"></div></aside>
+</div>
+<footer class="foot"><span>Replayed from a real run · time compressed</span><span>Selected log lines · all durations are real seconds</span><div class="controls"><button id="pause">Pause</button><button id="replay">Replay</button><button id="theme">Dark theme</button></div></footer>
+<div class="progress" aria-hidden="true"><div id="progress"></div></div>
+</main>
+<script id="run-data" type="application/json">{"run_id": "20261010T101804Z-5c3370f", "repo": "Timidan/rinne", "sha": "5c3370f9a736", "path": "", "image": "node:24-bookworm", "agent_version": "0.1.0", "started": 1791627484.1040459, "agent": {"passed": true, "status": "passed", "detail": "", "package_manager": "pnpm", "rules_fired": [], "attempts": [{"source": "model", "kind": "config", "files": ["package.json"], "rationale": "pnpm 12 completed dependency resolution but blocked esbuild's install/build script under its default ignored-build policy, producing ERR_PNPM_IGNORED_BUILDS. Explicitly allowing esbuild through the supported package.json pnpm.onlyBuiltDependencies setting lets the frozen-lockfile install run its required build script without changing dependencies or the lockfile.", "confidence": 0.99, "result": "failed at install", "recovered_from_invalid_json": false, "status": "applied"}, {"source": "model", "kind": "config", "files": ["pnpm-workspace.yaml"], "rationale": "pnpm 12 no longer reads the `pnpm.onlyBuiltDependencies` field from package.json, so esbuild's install script was blocked and frozen-lockfile installation failed with ERR_PNPM_IGNORED_BUILDS. Moving the setting to pnpm-workspace.yaml uses pnpm's supported workspace configuration and allows esbuild to run during installation.", "confidence": 0.99, "result": "failed at install", "recovered_from_invalid_json": false, "status": "applied"}, {"source": "model", "kind": "config", "files": ["pnpm-workspace.yaml"], "rationale": "pnpm 12.10.1 no longer honors the legacy `onlyBuiltDependencies` setting in this workspace configuration, so esbuild is treated as an ignored build. The pnpm 12-compatible `allowBuilds` map explicitly permits esbuild's install script, allowing the frozen-lockfile install to complete.", "confidence": 0.97, "result": "passed", "recovered_from_invalid_json": false, "status": "applied"}], "steps": [{"name": "clone", "command": "git clone -q https://github.com/Timidan/rinne.git repo && cd repo && git checkout -q 5c3370f9a736", "exit_code": 0, "duration_s": 8.4, "started": 1791627496.4560406, "ended": 1791627504.8987412, "output_tail": []}, {"name": "toolchain", "command": "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin && rm -rf $HOME/.node && rm -rf $HOME/.pm && node --version", "exit_code": 0, "duration_s": 7.4, "started": 1791627547.9538252, "ended": 1791627555.382378, "output_tail": ["v24.21.0"]}, {"name": "detect", "command": "lockfile", "exit_code": 0, "duration_s": 0, "package_manager": "pnpm", "output_tail": []}, {"name": "install", "command": "cd repo && pnpm --version && pnpm install --frozen-lockfile", "exit_code": 1, "duration_s": 17.4, "started": 1791627555.3845499, "ended": 1791627572.81909, "output_tail": ["12.10.1", "Scope: all 3 workspace projects", "? Verifying lockfile against supply-chain policies (165 entries)...", "Progress: resolved 94, reused 0, downloaded 27, added 0", "Packages are hard linked from the content-addressable store to the virtual store.", "  Content-addressable store is at: /home/node/.local/share/pnpm/store/v11", "  Virtual store is at:             node_modules/.pnpm", "[WARN] Tarball download average speed 46 KiB/s (size 47 KiB) is below 50 KiB/s: https://registry.npmjs.org/postcss/-/postcss-8.5.15.tgz (GET)", "Progress: resolved 94, reused 0, downloaded 80, added 64", "Progress: resolved 94, reused 0, downloaded 91, added 64", "\u2713 Lockfile passes supply-chain policies (165 entries in 5s)", "Lockfile is up to date, resolution step is skipped", "Packages: +94", "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "Progress: resolved 94, reused 0, downloaded 94, added 94, done", "Downloading the pnpm 12.10.1 binary for linux-x64...", "Error: ERR_PNPM_IGNORED_BUILDS", "", "  \u00d7 installing dependencies", "  \u2570\u2500\u25b6 Ignored build scripts: esbuild@0.25.12", "  help: Run \"pnpm approve-builds\" to pick which dependencies should be allowed", "        to run scripts.", ""]}, {"name": "toolchain", "command": "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin && rm -rf $HOME/.node && rm -rf $HOME/.pm && node --version", "exit_code": 0, "duration_s": 7.5, "started": 1791627755.8176184, "ended": 1791627763.3614006, "output_tail": ["v24.21.0"]}, {"name": "install", "command": "cd repo && pnpm --version && pnpm install --frozen-lockfile", "exit_code": 1, "duration_s": 7.8, "started": 1791627763.3628926, "ended": 1791627771.1743042, "output_tail": ["12.10.1", "Scope: all 3 workspace projects", "\u2713 Lockfile passes supply-chain policies (verified 3m ago)", "[WARN] The \"pnpm\" field in package.json is no longer read by pnpm. The following keys were ignored: \"pnpm.onlyBuiltDependencies\". See https://pnpm.io/settings for the new home of each setting.", "Error: ERR_PNPM_IGNORED_BUILDS", "", "  \u00d7 installing dependencies", "  \u2570\u2500\u25b6 Ignored build scripts: esbuild@0.25.12", "  help: Run \"pnpm approve-builds\" to pick which dependencies should be allowed", "        to run scripts.", ""]}, {"name": "toolchain", "command": "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin && rm -rf $HOME/.node && rm -rf $HOME/.pm && node --version", "exit_code": 0, "duration_s": 7.4, "started": 1791627897.6839585, "ended": 1791627905.1079159, "output_tail": ["v24.21.0"]}, {"name": "install", "command": "cd repo && pnpm --version && pnpm install --frozen-lockfile", "exit_code": 1, "duration_s": 7.8, "started": 1791627905.1100647, "ended": 1791627912.9203482, "output_tail": ["12.10.1", "Scope: all 3 workspace projects", "\u2713 Lockfile passes supply-chain policies (verified 5m ago)", "[WARN] The \"pnpm\" field in package.json is no longer read by pnpm. The following keys were ignored: \"pnpm.onlyBuiltDependencies\". See https://pnpm.io/settings for the new home of each setting.", "Error: ERR_PNPM_IGNORED_BUILDS", "", "  \u00d7 installing dependencies", "  \u2570\u2500\u25b6 Ignored build scripts: esbuild@0.25.12", "  help: Run \"pnpm approve-builds\" to pick which dependencies should be allowed", "        to run scripts.", ""]}, {"name": "toolchain", "command": "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin && rm -rf $HOME/.node && rm -rf $HOME/.pm && node --version", "exit_code": 0, "duration_s": 7.5, "started": 1791628039.9432664, "ended": 1791628047.4495156, "output_tail": ["v24.21.0"]}, {"name": "install", "command": "cd repo && pnpm --version && pnpm install --frozen-lockfile", "exit_code": 0, "duration_s": 8.5, "started": 1791628047.4512835, "ended": 1791628055.9359996, "output_tail": ["12.10.1", "Scope: all 3 workspace projects", "\u2713 Lockfile passes supply-chain policies (verified 8m ago)", "Lockfile is up to date, resolution step is skipped", "Already up to date", ".../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js", ".../esbuild@0.25.12/node_modules/esbuild postinstall: Done", "Done in 535ms using pnpm v12.10.1", "[WARN] The \"pnpm\" field in package.json is no longer read by pnpm. The following keys were ignored: \"pnpm.onlyBuiltDependencies\". See https://pnpm.io/settings for the new home of each setting."]}]}, "verifier": {"passed": true, "steps": [{"name": "clone", "command": "git clone -q https://github.com/Timidan/rinne.git repo && cd repo && git checkout -q 5c3370f9a736", "exit_code": 0, "duration_s": 9.4, "started": 1791628073.7572932, "ended": 1791628083.133386, "output_tail": []}, {"name": "toolchain", "command": "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin && rm -rf $HOME/.node && rm -rf $HOME/.pm && node --version", "exit_code": 0, "duration_s": 7.9, "started": 1791628134.5829332, "ended": 1791628142.4630501, "output_tail": ["v24.21.0"]}, {"name": "detect", "command": "lockfile", "exit_code": 0, "duration_s": 0, "package_manager": "pnpm", "output_tail": []}, {"name": "install", "command": "cd repo && pnpm --version && pnpm install --frozen-lockfile", "exit_code": 0, "duration_s": 24.9, "started": 1791628142.464611, "ended": 1791628167.358189, "output_tail": ["12.10.1", "Scope: all 3 workspace projects", "? Verifying lockfile against supply-chain policies (165 entries)...", "Progress: resolved 94, reused 0, downloaded 1, added 0", "Packages are hard linked from the content-addressable store to the virtual store.", "  Content-addressable store is at: /home/node/.local/share/pnpm/store/v11", "  Virtual store is at:             node_modules/.pnpm", "Progress: resolved 94, reused 0, downloaded 78, added 64", "Progress: resolved 94, reused 0, downloaded 83, added 64", "Progress: resolved 94, reused 0, downloaded 90, added 64", "Progress: resolved 94, reused 0, downloaded 92, added 64", "Progress: resolved 94, reused 0, downloaded 93, added 64", "\u2713 Lockfile passes supply-chain policies (165 entries in 8.6s)", "Lockfile is up to date, resolution step is skipped", "Packages: +94", "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "Progress: resolved 94, reused 0, downloaded 94, added 94, done", ".../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js", ".../esbuild@0.25.12/node_modules/esbuild postinstall: Done", "Done in 9.4s using pnpm v12.10.1", "Downloading the pnpm 12.10.1 binary for linux-x64...", "[WARN] The \"pnpm\" field in package.json is no longer read by pnpm. The following keys were ignored: \"pnpm.onlyBuiltDependencies\". See https://pnpm.io/settings for the new home of each setting."]}]}, "model_calls": [{"prompt_chars": 3654, "started": 1791627685.17944, "duration_s": 5.7, "status": "ok", "model": "gpt-5.6-luna", "effort": "medium", "response_chars": 1133, "tokens_estimated": {"prompt_tokens": 913, "completion_tokens": 283, "total_tokens": 1196}}, {"prompt_chars": 3163, "started": 1791627834.8241658, "duration_s": 19.4, "status": "ok", "model": "gpt-5.6-luna", "effort": "medium", "response_chars": 506, "tokens_estimated": {"prompt_tokens": 790, "completion_tokens": 126, "total_tokens": 916}}, {"prompt_chars": 3258, "started": 1791627979.182672, "duration_s": 9.1, "status": "ok", "model": "gpt-5.6-luna", "effort": "medium", "response_chars": 458, "tokens_estimated": {"prompt_tokens": 814, "completion_tokens": 114, "total_tokens": 928}}], "ended": 1791628177.9504716, "result": "fixed"}</script>
+<script id="patch-data" type="application/json">"diff --git a/package.json b/package.json\nindex d19ff3c..0acbaf2 100644\n--- a/package.json\n+++ b/package.json\n@@ -10,5 +10,10 @@\n     \"rinne:doctor\": \"pnpm --filter rinne run doctor\",\n     \"rinne:app\": \"pnpm --filter rinne-web build && pnpm --filter rinne run serve\",\n     \"test\": \"pnpm --filter rinne test\"\n+  },\n+  \"pnpm\": {\n+    \"onlyBuiltDependencies\": [\n+      \"esbuild\"\n+    ]\n   }\n }\ndiff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml\nindex 014188f..179f882 100644\n--- a/pnpm-workspace.yaml\n+++ b/pnpm-workspace.yaml\n@@ -1,3 +1,6 @@\n packages:\n   - rinne\n   - rinne-web\n+\n+allowBuilds:\n+  esbuild: true\n"</script>
+<script>
+const run = JSON.parse(document.getElementById('run-data').textContent);
+const patch = JSON.parse(document.getElementById('patch-data').textContent);
+const installs = run.agent.steps.filter(s => s.name === 'install');
+const verify = run.verifier.steps;
+const duration = 24000;
+const starts = [4000, 7800, 11600];
+const ends = [7500, 11300, 15300];
+const excerpts = [
+  'Explicitly allowing esbuild through the supported package.json pnpm.onlyBuiltDependencies setting',
+  "Moving the setting to pnpm-workspace.yaml uses pnpm's supported workspace configuration and allows esbuild to run during installation.",
+  "The pnpm 12-compatible `allowBuilds` map explicitly permits esbuild's install script, allowing the frozen-lockfile install to complete."
+];
+const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const seconds = step => `${step.duration_s.toFixed(1)} s`;
+const symbol = step => step.exit_code === 0 ? '✓' : '✗';
+const tone = step => step.exit_code === 0 ? 'good' : 'bad';
+const workspaceDiff = patch.slice(patch.indexOf('@@', patch.indexOf('diff --git a/pnpm-workspace.yaml'))).trimEnd().split('\n').filter(l => l.startsWith('@@') || l.startsWith('+') && l.length > 1);
+const braille = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+let paused = false, offset = 0, origin = null, lastTime = 0, frameId = 0;
+const params = new URLSearchParams(location.search);
+if(params.get('theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+if(params.has('capture')) document.body.classList.add('capture');
+function typing(command, elapsed) {
+  let budget = 0, count = 0;
+  for(const char of command) {
+    budget += 10 + (char.charCodeAt(0) % 7) * 2.3;
+    if(budget > elapsed) break;
+    count++;
+  }
+  return command.slice(0, count);
+}
+function commandLine(command, elapsed, time) {
+  return `<div class="line command"><span class="prompt">❯</span>${escape(typing(command, elapsed))}<span class="cursor" style="opacity:${Math.floor(time/500)%2 ? 0 : 1}"></span></div>`;
+}
+function stage(step, elapsed, span, time, lines) {
+  const done = elapsed >= span;
+  const typedMs = Math.min(1450, span * .38);
+  const fraction = Math.max(0, Math.min(1, (elapsed - typedMs) / (span - typedMs)));
+  const count = done ? lines.length : Math.floor(fraction * lines.length);
+  return commandLine(step.command, elapsed * 1.4, time) +
+    `<div class="running"><span class="${done ? tone(step) : ''}">${done ? symbol(step) : braille[Math.floor(time/90)%10]} ${escape(step.name)}</span><span>${(step.duration_s * fraction).toFixed(1)} / ${seconds(step)}</span></div>` +
+    `<div class="output">${lines.slice(0,count).map(line => `<div class="line ${line.includes('Error:') || line.includes('Ignored build') ? 'bad' : ''}">${escape(line)}</div>`).join('')}</div>`;
+}
+function render(time) {
+  time = Math.max(0, Math.min(duration, time)); lastTime = time;
+  const initial = run.agent.steps.slice(0,3);
+  let html = `<div class="preflight" style="display:${time >= 15800 ? 'none' : 'block'}">${initial.map(s => `✓ ${escape(s.name)} ${seconds(s)}`).join(' &nbsp;·&nbsp; ')} &nbsp;·&nbsp; ${escape(run.image)}</div>`;
+  const active = starts.findLastIndex(start => time >= start);
+  for(let i=0;i<=active;i++) {
+    const step = installs[i+1], finished = time >= ends[i];
+    html += `<div class="fix"><span class="${finished ? tone(step) : 'muted'}">${finished ? symbol(step) : braille[Math.floor(time/90)%10]}</span><mark>fix ${i+1} / ${escape(run.agent.attempts[i].files.join(', '))}</mark><span class="result ${finished ? tone(step) : 'muted'}">${finished ? escape(run.agent.attempts[i].result)+' · '+seconds(step) : 'applied'}</span></div>`;
+  }
+  let diffHTML = '';
+  if(time >= 13200) {
+    const diffCount = Math.min(workspaceDiff.length, Math.floor((time-13200)/140)+1);
+    diffHTML = `<div class="diff">${workspaceDiff.slice(0,diffCount).map(l=>`<div class="${l.startsWith('+') ? 'added' : 'muted'}">${escape(l)}</div>`).join('')}</div>`;
+  }
+  if(time >= 15800) html += diffHTML;
+  if(time < 4000) {
+    html += stage(installs[0],time,3400,time,[installs[0].output_tail[0],installs[0].output_tail[1],...installs[0].output_tail.slice(15,20)]);
+  } else if(time < 11600) {
+    const i = active, step = installs[i+1];
+    html += stage(step,time-starts[i],ends[i]-starts[i],time,[step.output_tail[0],step.output_tail[4],step.output_tail[7]]);
+    if(time-starts[i]>=1700) html += `<div class="line muted" style="font-size:12px">${escape(step.output_tail[3].split(' The following')[0])}</div>`;
+  } else if(time < 15800) {
+    const step = installs[3];
+    html += stage(step,time-starts[2],ends[2]-starts[2],time,[step.output_tail[6]]);
+    html += diffHTML;
+  } else {
+    html += '<div class="separator">clean container · fresh clone + fix only</div>';
+    const prep = verify.slice(0,3);
+    html += `<div class="preflight">${prep.map(s=>`✓ ${escape(s.name)} ${seconds(s)}`).join(' &nbsp;·&nbsp; ')}</div>`;
+    const step = verify[3];
+    html += stage(step,time-15800,5000,time,[step.output_tail[18],step.output_tail[19]]);
+    if(time >= 20800) html += `<div class="verdict"><strong>✓ ${escape(run.result)}</strong><span>verifier ${run.verifier.passed ? 'passed' : 'failed'}</span><small>install verified</small></div>`;
+  }
+  document.getElementById('terminal').innerHTML = html;
+  document.getElementById('agent').innerHTML = run.agent.attempts.map((attempt,i) => {
+    const visible = time >= starts[i], finished = time >= ends[i];
+    const opacity = visible ? Math.min(1,(time-starts[i])/250) : 0;
+    return `<article class="agent-card ${active===i ? 'active' : ''}" style="opacity:${opacity}" aria-hidden="${!visible}"><div class="agent-heading"><span>ATTEMPT ${String(i+1).padStart(2,'0')}</span><span class="${finished ? tone(installs[i+1]) : ''}">${finished ? symbol(installs[i+1])+' '+escape(attempt.result) : seconds(run.model_calls[i])+' model call'}</span></div><p>“${escape(excerpts[i])}${i===0 ? '…' : ''}”</p></article>`;
+  }).join('');
+  document.getElementById('progress').style.width = `${time/duration*100}%`;
+  document.getElementById('pause').textContent = paused || time === duration ? 'Play' : 'Pause';
+  document.getElementById('theme').textContent = document.documentElement.dataset.theme === 'dark' ? 'Light theme' : 'Dark theme';
+}
+// A single supplied clock controls typing, output, spinners, cursor and reveals.
+window.replay = {render, duration, run, patch, excerpts};
+function frame(now) {
+  if(origin === null) origin = now;
+  if(!paused) render(reduced.matches ? duration : offset + now-origin);
+  if(lastTime < duration) frameId = requestAnimationFrame(frame);
+}
+function start() { cancelAnimationFrame(frameId); paused=false; offset=0; origin=null; render(reduced.matches ? duration : 0); if(!reduced.matches && !params.has('capture')) frameId = requestAnimationFrame(frame); }
+document.getElementById('replay').onclick = start;
+document.getElementById('pause').onclick = () => { if(lastTime===duration) return start(); paused=!paused; offset=lastTime; origin=performance.now(); render(lastTime); };
+document.getElementById('theme').onclick = () => { document.documentElement.dataset.theme = document.documentElement.dataset.theme==='dark' ? 'light' : 'dark'; render(lastTime); };
+reduced.addEventListener('change', start);
+function resize() { const scale = Math.min(1,innerWidth/1280); document.querySelector('main').style.transform=`scale(${scale})`; document.body.style.height=`${720*scale}px`; }
+addEventListener('resize',resize); resize(); start();
+</script>
+</body>
+</html>

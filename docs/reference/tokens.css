@@ -1,0 +1,44 @@
+/* Resurgo brand: Daylight lab. Light by default, dark via [data-theme="dark"] or the system preference. */
+:root {
+  --canvas: #F3F6FA; --panel: #FFFFFF; --muted: #EAEFF5;
+  --ink: #0F1720; --ink-2: #2A3441; --secondary: #55606E;
+  --hairline: #DCE3EC; --control: #C6D0DC;
+  --accent: #2F6BFF;          /* art, focus rings, large accents */
+  --accent-strong: #2459E8;   /* buttons with white text (5.7:1), links */
+  --on-accent: #FFFFFF;
+  --evidence: #E6FB63; --on-evidence: #0F1720;   /* highlighter for fixes and proof */
+  --runs: #127A4A;  --runs-soft: #E2F3EA;
+  --gaps: #8A6400;  --gaps-soft: #FBF1D2;
+  --broken: #BE3A2E; --broken-soft: #FBE7E3;
+  --checking: #2459E8; --checking-soft: #E7EEFF;
+  --terminal: #FFFFFF; --terminal-ink: #0F1720;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
+  --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
+  --hairline: #263244; --control: #33415A;
+  --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+  --evidence: #D9F24A; --on-evidence: #0F1720;
+  --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+  --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
+  --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
+  --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+  --terminal: #121A27; --terminal-ink: #EEF2F7;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
+    --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
+    --hairline: #263244; --control: #33415A;
+    --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+    --evidence: #D9F24A; --on-evidence: #0F1720;
+    --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+    --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
+    --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
+    --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+    --terminal: #121A27; --terminal-ink: #EEF2F7;
+    color-scheme: dark;
+  }
+}
