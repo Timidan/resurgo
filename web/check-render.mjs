@@ -1,5 +1,6 @@
 // Loads the built site in headless Chromium. Exits non-zero if a page renders blank, scrolls
-// sideways, or shows an inner horizontal scrollbar on step output.
+// sideways, shows an inner horizontal scrollbar on step output, or (landing) the stack strip and
+// the "Built on" line do not render named logos.
 // Usage: node web/check-render.mjs [baseUrl] [runId] [screenshotDir]
 // Needs the API (which also serves web/dist) already running and `chromium` on PATH.
 import { spawn, spawnSync } from "node:child_process";
@@ -43,8 +44,25 @@ const PROBE = `(() => {
     .filter((e) => { const s = getComputedStyle(e); return (s.overflowX === 'auto' || s.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 1; })
     .map((e) => ({ el: name(e), step: e.matches(stepOut) }));
   const install = [...document.querySelectorAll('a')].filter((a) => /Install on GitHub/i.test(a.textContent || '')).map((a) => a.href);
-  return JSON.stringify({ vw, scrollWidth: document.documentElement.scrollWidth, over, inner, install });
+  // Logos: each one is an image with a name and a tooltip, drawn at a real size with a mask.
+  const logo = (e) => { const r = e.getBoundingClientRect(); return {
+    name: e.getAttribute('aria-label'), role: e.getAttribute('role'), title: e.getAttribute('title'),
+    w: Math.round(r.width), h: Math.round(r.height),
+    masked: /url\\(/.test(getComputedStyle(e).maskImage || getComputedStyle(e).webkitMaskImage || ''),
+  }; };
+  const strip = [...document.querySelectorAll('section[aria-label="Works with"] [data-logo]')].map(logo);
+  // What a screen reader says for the "Built on" line: logos read as their aria-label.
+  const readAs = (n) => n.nodeType === 3 ? n.textContent : n.getAttribute && n.getAttribute('role') === 'img'
+    ? n.getAttribute('aria-label') : [...n.childNodes].map(readAs).join('');
+  const builtP = [...document.querySelectorAll('p')].find((p) => p.querySelector('[data-logo=neatlogs]'));
+  const builtOn = builtP ? { text: readAs(builtP).replace(/\\s+/g, ' ').trim(), logos: [...builtP.querySelectorAll('[data-logo]')].map(logo) } : null;
+  const buttons = [...document.querySelectorAll('a')].filter((a) => /Install/.test(a.textContent || '')).map((a) => !!a.querySelector('[data-logo=github]'));
+  return JSON.stringify({ vw, scrollWidth: document.documentElement.scrollWidth, over, inner, install, strip, builtOn, buttons });
 })()`;
+
+const STRIP = ["Node.js", "pnpm", "npm", "Yarn", "Foundry", "Cargo (Rust)", "Docker", "GitHub"];
+const BUILT_ON = "Built on neatlogs tracing and Entire checkpoints.";
+const logoOk = (l) => l.role === "img" && l.name && l.title === l.name && l.w >= 12 && l.h >= 8 && l.masked;
 
 /** One headless Chromium with a CDP socket, for viewport width, colour scheme and measurements. */
 async function openBrowser() {
@@ -112,9 +130,23 @@ for (const [name, path] of pages) {
       const stepScroll = m.inner.filter((i) => i.step);
       // The header and the hero each carry the install link; it must point at the app's install page.
       const installOk = m.install.length >= (path === "/" ? 2 : 1) && m.install.every((h) => h === INSTALL_URL);
-      const good = !sideways && stepScroll.length === 0 && installOk;
+      // Landing only: the stack strip and the "Built on" line show logos with accessible names, and
+      // every install button carries the GitHub mark.
+      let logos = true;
+      const logoNotes = [];
+      if (path === "/") {
+        const names = m.strip.map((l) => l.name);
+        const stripOk = names.join("|") === STRIP.join("|") && m.strip.every(logoOk);
+        const built = m.builtOn;
+        const builtOk = !!built && built.text === BUILT_ON && built.logos.length === 2 && built.logos.every(logoOk);
+        const btnOk = m.buttons.length >= 2 && m.buttons.every(Boolean);
+        logos = stripOk && builtOk && btnOk;
+        logoNotes.push(`strip ${stripOk ? "ok" : "BAD " + JSON.stringify(m.strip)}`, `built-on ${builtOk ? "ok" : "BAD " + JSON.stringify(built)}`, `button marks ${btnOk ? "ok" : "BAD " + JSON.stringify(m.buttons)}`);
+      }
+      const good = !sideways && stepScroll.length === 0 && installOk && logos;
       failed ||= !good;
       console.log(`${good ? "PASS" : "FAIL"} ${path} ${width}px ${theme}: scrollWidth ${m.scrollWidth}/${m.vw}, step-output scrollbars ${stepScroll.length}, install links ${m.install.length ? m.install.join(" ") : "none"}`);
+      if (logoNotes.length) console.log(`  logos: ${logoNotes.join("; ")}`);
       if (sideways) console.log(`  overflowing: ${m.over.join(" | ")}`);
       for (const i of stepScroll) console.log(`  inner scrollbar: ${i.el}`);
       console.log(`  screenshot ${shot}`);

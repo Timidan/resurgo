@@ -66,7 +66,7 @@ function Header() {
             className="press inline-flex min-h-9 items-center gap-2 rounded-lg border border-accent-strong bg-accent-strong px-3 text-sm font-semibold text-on-accent hover:opacity-90"
           >
             <Logo name="github" size="1.25em" decorative />
-            Install<span className="hidden sm:inline">{" on GitHub"}</span>
+            <span>Install<span className="hidden sm:inline">{" on GitHub"}</span></span>
           </a>
           <ThemeToggle />
         </nav>

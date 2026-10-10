@@ -93,8 +93,8 @@ function Hero({ data }: { data: LandingData }) {
           </div>
         )}
         <p className="mt-10 text-sm text-muted-foreground">
-          Built on <Logo name="neatlogs" size="0.8em" className="text-foreground" /> tracing and{" "}
-          <Logo name="entire" size="0.8em" className="text-foreground" /> checkpoints.
+          Built on <Logo name="neatlogs" size="0.8em" className="mx-[0.1em] text-foreground" /> tracing and{" "}
+          <Logo name="entire" size="0.8em" className="mx-[0.1em] text-foreground" /> checkpoints.
         </p>
       </div>
 

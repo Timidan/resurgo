@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
  * brand colour for the colourful ones (the same in both themes).
  */
 const LOGOS = {
-  neatlogs: { name: "neatlogs", file: "neatlogs-wordmark.webp", ratio: 1100 / 243 },
+  // `drop` is the descender share of the image height, so the letters (not the "g" tail) sit on the baseline.
+  neatlogs: { name: "neatlogs", file: "neatlogs-wordmark.webp", ratio: 1100 / 243, drop: 0.2 },
   entire: { name: "Entire", file: "entire.svg", ratio: 959.94 / 236.81 },
   cfo: { name: "cfo.ai", file: "cfo.svg", ratio: 1 },
   foundry: { name: "Foundry", file: "foundry-mark.png", ratio: 1 },
@@ -50,6 +51,7 @@ export function Logo({
       style={{
         height: size,
         width: `calc(${size} * ${l.ratio})`,
+        verticalAlign: "drop" in l ? `calc(${size} * -${l.drop})` : undefined,
         backgroundColor: "color" in l ? l.color : "currentColor",
         WebkitMaskImage: url,
         maskImage: url,

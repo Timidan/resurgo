@@ -21,7 +21,7 @@ For front-end work: `npm run dev --prefix web` (Vite proxies `/api` to 127.0.0.1
 ## Choices worth knowing
 
 - **Built on** names neatlogs and Entire only. `docs/LANDING.md` also lists AWS Bedrock, but `hackathon.md` records the model as an OpenAI model behind a self-hosted gateway, so Bedrock is left off until that is true.
-- **GitHub App**: not built, so the hero shows "GitHub App: not live yet" as a plain disabled label rather than a link. The closing flow and the $2 pricing line are labelled "Planned".
+- **GitHub App**: now exists ("Resurgo Agent"); copy updated, see "Logos, copy, third status" below. The $2 pricing line is still labelled "Planned" because there is no billing.
 - **Test-set strip** counts repos actually run, not "24". The 24-repo held-out claim waits for the sweep.
 - **Stats trio** is computed from recorded runs (development repos) and says so. Held-out v1 vs v2 and cost per fix are not shown; no such measurement exists in the records.
 - **Trace id**: result.json has no trace id yet, so the run view says "not recorded for this run". If the runner adds a `trace_id` field it shows up automatically.
@@ -103,6 +103,15 @@ Not done / limits:
 - **Sideways scroll at 420 px** had two sources. Single-column grids (no explicit column) were sized to their widest nowrap child, so the run view's verifier cards and the landing's step terminals stretched the page; those grids now have `grid-cols-1`. And an unrevealed `.reveal` block with a +24 px X offset stuck 8 px out past the 16 px gutter; the offset is now capped at the gutter in `index.css`.
 - **Step output** wraps (`whitespace-pre-wrap break-words`, still monospace) instead of scrolling inside the terminal.
 - **Install**: "Install on GitHub" (`INSTALL_URL` in `lib/utils.ts`) is the hero's primary action and sits in the header ("Install" under 640 px). The copy chip is the secondary "or run it yourself". Motion is the existing `.press` squash only.
-- **Copy that now disagrees**: the closing section ("The GitHub App is the next thing to build"), the chat's "Live checks open with the GitHub App", the "Planned flow" label and `api/main.py`'s agent view ("The GitHub App is not live") still say the App is not live. Not edited; decide what is true and update them together.
+- **Copy that disagreed**: fixed in the next-but-one section.
 - **Deploy**: `Dockerfile` (Node build stage, Python stage with fastapi and uvicorn installed under a constraints file exported from `uv.lock`), `.dockerignore` (allowlist), `deploy/compose.yaml` (`RESURGO_RUNS_DIR` mounted read-only at `/runs`, network `public_proxy`, no ports). The image was not built or run; it was checked by reading and by running `uv export` locally. The runs directory must be readable by uid 10001.
 - **Check**: `node web/check-render.mjs` now measures at 420 and 1280 px in both themes, fails on page-level sideways scroll, on inner scrollbars in step output, and on a missing or wrong install link.
+
+## Logos, copy, third status
+
+- **Logos**: files and sources in `web/public/logos/` (`SOURCES.md`). One `components/Logo.tsx`: every logo is a CSS mask painted with `currentColor` (neatlogs, Entire, cfo.ai, Foundry, GitHub, Rust, Bun) or its brand colour (Node, pnpm, npm, Yarn, Docker). It is `role="img"` with `aria-label` and a `title` with the product name, so "Built on neatlogs tracing and Entire checkpoints." reads as that sentence. The neatlogs wordmark is dropped by its descender share so its letters sit on the text baseline. The mark inside the Install buttons is `aria-hidden` because "Install on GitHub" already names it. Bun and cfo.ai have files and a `Logo` entry but are not shown (Bun waits for agent v2, cfo.ai for the business plan).
+- **Strip**: "Works with", 24 px marks, 16 px gaps: Node, pnpm, npm, Yarn, Foundry, Rust (named "Cargo (Rust)"), Docker, GitHub.
+- **Copy**: closing section, chat reply, flow label and `api/main.py` agent view now say: install the App on the repos you pick; a pull request opens only for a fix that passed in a clean container; code changes wait for approval. "Weekly re-checks" and "keeps watch" are gone (no schedules exist).
+- **`fix_awaiting_approval`**: "Fix verified · awaiting approval", glyph ◆, dashed amber outline. `_status` returns it when `needs_approval` is true, `_verified` is true, `verifier.passed` is not false, and the record's own `result` is not `broken`. `verified` stays true (the verifier did pass), but the run view, the story and the lift flourish treat only a non-awaiting verified run as a clean pass. Anything else with `needs_approval` is judged as before (Broken).
+- **Check**: `check-render.mjs` also asserts, on the landing page, that the strip has the eight named logos, that the "Built on" line reads as its sentence with two named logos, and that both install buttons carry the GitHub mark.
+- **Not run here**: the API could not be restarted (Python needed an approval the session could not get), so `_status` was checked by reading, and the UI against a Node stand-in that adds one synthetic awaiting record to the real list.
