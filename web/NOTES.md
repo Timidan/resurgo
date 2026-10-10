@@ -70,6 +70,16 @@ Not done / limits:
 - Tiles that slide along the list (more than six repos) jump to their new position; only the arriving tile animates.
 - Wall time is compressed in the story, but every timer counts to the recorded duration and is labelled. A full run is now longer than before because of the reading pauses.
 
+## Fourth pass: blank landing on summary-only /api/runs
+
+- **Crash**: `findProblems` in `pages/landing-data.ts` called `r.problems.find` on list rows. When `/api/runs` returned summary fields only (id, repo, sha, path, type, status, duration_s, model_calls, fix_kind, needs_approval, started) that threw inside the `useMemo`, and with no boundary React unmounted `#root`. `LiveTiles` read `r.verifier_steps.length` the same way.
+- **Contract**: in `lib/api.ts` only those eleven fields are required on `RunSummary`; `type` and `fix_kind` are nullable for older records. Everything else (`verified`, `gaps`, `*_steps`, `attempts`, `problems`, `patch_preview`, …) is optional, so `tsc` flags any unguarded read. Steps and attempts come from `/api/runs/{id}` (`useRun`), which the landing already fetches for the featured run only.
+- **Fallbacks**: verified runs are counted from `status` (`runs`, `runs_with_gaps`) when `verified` is absent. A tile's clean-container line is blank, not "none recorded", when the list has no `verifier_steps`.
+- **Boundaries**: `components/ErrorBoundary.tsx` wraps every landing section and the route outlet. A throw shows "<section> could not be shown" in place and logs the error; the header, footer and other sections stay.
+- **Known loss**: "The problem" section needs `problems` (evidence lines) and hides itself when list rows lack them. Restoring it with a summary-only list means fetching details for the failing runs; not done.
+- **Check**: `node web/check-render.mjs [baseUrl] [runId] [shotDir]` loads `/`, `/runs` and `/runs/<id>` with `chromium --headless=new --dump-dom` (6 s virtual time), exits 1 if `#root` has under 80 characters of text or a boundary notice, and writes light and dark screenshots. It needs the API running (it serves `web/dist`).
+- **Not verified in the session that wrote this**: starting the API and Chromium needed an approval the non-interactive session could not get, so the script was syntax-checked (`node --check`) and the app built (`tsc -b` + `vite build`), but not run. The `--blink-settings=preferredColorScheme` flag for the dark screenshot is untested.
+
 ## Not done
 
 - Axe and a scripted keyboard walk were not run; checked by headless-Chromium screenshots in both themes and by reading the focus styles (2 px accent-strong outline, roving tabindex on tabs). Brand tokens carry their own contrast ratios; the pairs added here (`canvas` on `runs`/`broken`/`gaps` bars, `on-accent` on `accent-strong`) were not re-measured.
