@@ -12,13 +12,13 @@ const T_CHECK = "bg-checking-soft text-checking";
 const STATUS: Record<string, StatusMeta> = {
   runs: { word: "Runs", glyph: "✓", tone: T_RUNS, text: "text-runs" },
   runs_with_gaps: { word: "Runs with gaps", glyph: "◐", tone: T_GAPS, text: "text-gaps" },
-  // The fix passed in the clean container but changes code and waits for the owner. Dashed outline, so
-  // it can't be read as a clean pass (solid green) or as "Runs with gaps" (solid amber).
+  // The fix passed in the clean container but changes code and waits for the owner. Its own role colour
+  // (violet), and a dashed outline besides, so it can't be read as a clean pass or as "Runs with gaps".
   fix_awaiting_approval: {
     word: "Fix verified · awaiting approval",
     glyph: "◆",
-    tone: "border border-dashed border-gaps bg-gaps-soft text-gaps",
-    text: "text-gaps",
+    tone: "border border-dashed border-approval bg-approval-soft text-approval",
+    text: "text-approval",
   },
   // The patch only excluded tests. Styled like broken: it is not a repair.
   fix_skipped_tests: { word: "Fix skipped tests · not a repair", glyph: "✗", tone: T_BROKEN, text: "text-broken" },

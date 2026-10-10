@@ -444,7 +444,13 @@ function Closing({ data }: { data: LandingData }) {
   const history = [...data.runs].filter((r) => r.status !== "checking").reverse();
   const tone = (s: string) => {
     const m = statusMeta(s);
-    return m.text === "text-runs" ? "bg-runs text-canvas" : m.text === "text-broken" ? "bg-broken text-canvas" : "bg-gaps text-canvas";
+    return m.text === "text-runs"
+      ? "bg-runs text-canvas"
+      : m.text === "text-broken"
+        ? "bg-broken text-canvas"
+        : m.text === "text-approval"
+          ? "bg-approval text-canvas"
+          : "bg-gaps text-canvas";
   };
   const steps = ["Install the app", "Pick the repos", "Resurgo checks each from a fresh clone", "A pull request for each verified fix"];
   return (
@@ -476,7 +482,10 @@ function Closing({ data }: { data: LandingData }) {
             ))}
           </ol>
           <p className="mt-3 flex flex-wrap gap-x-5 font-mono text-xs text-muted-foreground">
-            <span>✓ Runs</span><span>◐ Runs with gaps</span><span>◐ Fixed, unverified</span><span>◆ Fix verified · awaiting approval</span><span>✗ Fix skipped tests</span><span>✗ Broken</span>
+            {["runs", "runs_with_gaps", "fixed", "fix_awaiting_approval", "fix_skipped_tests", "broken"].map((k) => {
+              const m = statusMeta(k);
+              return <span key={k} className={m.text}>{m.glyph} {m.word}</span>;
+            })}
           </p>
         </Reveal>
       )}

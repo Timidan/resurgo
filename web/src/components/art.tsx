@@ -44,7 +44,7 @@ export function BackgroundArt() {
         className="absolute inset-0"
         style={{
           backgroundImage:
-            "linear-gradient(to right, color-mix(in srgb, var(--control) 55%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--control) 55%, transparent) 1px, transparent 1px)",
+            "linear-gradient(to right, var(--hairline) 1px, transparent 1px), linear-gradient(to bottom, var(--hairline) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
           maskImage: "radial-gradient(ellipse 80% 60% at 70% 20%, black, transparent 75%)",
           WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 70% 20%, black, transparent 75%)",

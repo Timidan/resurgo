@@ -4,7 +4,7 @@ Source: John Lasseter, "Principles of Traditional Animation Applied to 3D Comput
 
 **Rule for every animator (Claude, Codex, Agy):** read the paper and this list before animating anything. Afterwards, report one line per principle: what you did and where.
 
-1. **Squash and stretch.** Use subtle scale changes that preserve volume, only at moments of contact. Buttons compress to about 0.97 on press and settle back. The verdict chip lands with a single overshoot to about 1.03. Never squash text.
+1. **Squash and stretch.** Use subtle scale changes that preserve volume, only at moments of contact. Buttons compress to about 0.96 on press and settle back. The verdict chip lands with a single overshoot to about 1.03. Never squash text.
 2. **Timing.** Duration conveys weight. Chips take 120–180 ms and windows 450–650 ms. Reading pauses scale with text length, roughly 250 ms plus 30 ms per word, so the eye can finish before the next beat. Streaming runs at about 35 characters per second. Real durations always appear as labels, even when time is compressed.
 3. **Anticipation.** Cue each beat before it happens. The cursor blinks twice before typing starts. A window's title bar appears about 120 ms before its body. The spinner appears before output streams. A tab's indicator moves before its content swaps.
 4. **Staging.** Run one focal action at a time. Dim inactive windows to about 0.55 opacity while another one acts. The eye path is project row, agent, terminal, clean container, verdict. Never animate the main content of two windows at once.
