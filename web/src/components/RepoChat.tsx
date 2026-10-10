@@ -1,9 +1,10 @@
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useReducedMotion } from "motion/react";
 import { Story } from "@/components/Story";
 import { useRun, type RunSummary } from "@/lib/api";
 import { statusMeta } from "@/lib/run";
-import { useStream } from "@/lib/stream";
+import { readingMs, useStream } from "@/lib/stream";
 
 /** owner/name from "owner/name", a github.com URL, or a git remote. Null when it isn't one. */
 export function parseRepo(input: string): string | null {
@@ -27,18 +28,28 @@ function Reply({ asked, latest, onPick }: { asked: Asked; latest: RunSummary[]; 
     : asked.repo
       ? `${NO_LIVE} ${asked.repo} has no recorded run yet, so there is nothing to replay.`
       : `That doesn't look like a public GitHub repo. Paste owner/name or a github.com link. ${NO_LIVE}`;
-  const { shown, done } = useStream(intro, { restartKey: asked.nonce });
-  const { data: detail, loading } = useRun(match && done ? match.id : null);
+  const reduce = useReducedMotion();
+  // Anticipation: a spinner for a beat, then the reply streams.
+  const { shown, done, started } = useStream(intro, { restartKey: asked.nonce, delay: 450 });
+  // Reading pause (250 ms + 30 ms a word) before the replay takes the stage.
+  const [read, setRead] = useState(!!reduce);
+  useEffect(() => {
+    if (reduce || !done) return;
+    const id = window.setTimeout(() => setRead(true), readingMs(intro));
+    return () => window.clearTimeout(id);
+  }, [reduce, done, intro]);
+  const { data: detail, loading } = useRun(match && done && read ? match.id : null);
   return (
     <div className="space-y-4">
-      <p className="rounded-lg border border-border bg-panel px-4 py-3">
+      <p className="settle rounded-lg border border-border bg-panel px-4 py-3">
+        {!started && !done && <span className="text-muted-foreground">◌ Looking in the gallery…</span>}
         {shown}
-        {!done && <span className="stream-cursor" />}
+        {started && !done && <span className="stream-cursor" />}
       </p>
-      {match && done && loading && <p className="text-sm text-muted-foreground" role="status">◌ Loading the recorded run…</p>}
+      {match && done && read && loading && <p className="text-sm text-muted-foreground" role="status">◌ Loading the recorded run…</p>}
       {match && detail && <Story detail={detail} runKey={asked.nonce} label={`Replay of the recorded run for ${match.repo}`} />}
       {!match && done && latest.length > 0 && (
-        <div>
+        <div className="settle">
           <p className="text-sm text-muted-foreground">These repositories have real recorded runs you can replay:</p>
           <ul className="mt-2 flex flex-wrap gap-2" role="list">
             {latest.map((r) => (
@@ -55,8 +66,8 @@ function Reply({ asked, latest, onPick }: { asked: Asked; latest: RunSummary[]; 
           </ul>
         </div>
       )}
-      {match && done && (
-        <p className="text-sm">
+      {match && done && read && (
+        <p className="settle text-sm">
           <Link to={`/runs/${match.id}`} className="text-accent-strong underline underline-offset-4">Open the full run record</Link>
         </p>
       )}
@@ -132,7 +143,7 @@ export function RepoChat({ latest }: { latest: RunSummary[] }) {
 
         {asked && (
           <div className="mt-8 space-y-4">
-            <p className="ml-auto w-fit max-w-full break-words rounded-lg bg-accent-strong px-4 py-2 font-mono text-sm text-on-accent">{asked.text}</p>
+            <p key={asked.nonce} className="settle ml-auto w-fit max-w-full break-words rounded-lg bg-accent-strong px-4 py-2 font-mono text-sm text-on-accent">{asked.text}</p>
             <Reply
               key={asked.nonce}
               asked={asked}

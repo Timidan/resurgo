@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useReducedMotion } from "motion/react";
 import { AnimIcon, type IconName } from "@/components/art";
 import { panelId, tabId, TabList } from "@/components/Tabs";
 import type { RunDetail } from "@/lib/api";
 import { cleanLine, fmtDur, parsePatch, statusMeta, stepOk } from "@/lib/run";
-import { useStream } from "@/lib/stream";
+import { readingMs, useStream } from "@/lib/stream";
 import { cn } from "@/lib/utils";
 
 type TabKey = "check" | "diagnose" | "repair" | "prove";
@@ -109,16 +109,29 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
     return () => io.disconnect();
   }, []);
 
-  const c = useMemo(() => contentFor(tab, detail), [tab, detail]);
-  const joined = c.lines.map((l) => l.text).join("\n");
-  const { shown, done } = useStream(joined, { restartKey: tab, enabled: inView || manual });
-
+  // Anticipation: the tab indicator moves first; the content swaps ~160 ms later.
+  const [shownTab, setShownTab] = useState<TabKey>(tab);
   useEffect(() => {
-    if (reduce || manual || held || !done || !inView) return;
-    const i = TABS.findIndex((t) => t.id === tab);
-    const id = window.setTimeout(() => setTab(TABS[(i + 1) % TABS.length].id), 3800);
+    if (reduce) {
+      setShownTab(tab);
+      return;
+    }
+    const id = window.setTimeout(() => setShownTab(tab), 160);
     return () => window.clearTimeout(id);
-  }, [reduce, manual, held, done, inView, tab]);
+  }, [tab, reduce]);
+
+  const c = useMemo(() => contentFor(shownTab, detail), [shownTab, detail]);
+  const joined = c.lines.map((l) => l.text).join("\n");
+  const { shown, done } = useStream(joined, { restartKey: shownTab, enabled: inView || manual });
+
+  // Stay long enough to read what streamed, plus the stat labels: 250 ms and 30 ms a word.
+  const readMs = Math.max(1800, readingMs(`${joined} ${c.stats.map((s) => `${s.label} ${s.value}`).join(" ")}`));
+  useEffect(() => {
+    if (reduce || manual || held || !done || !inView || shownTab !== tab) return;
+    const i = TABS.findIndex((t) => t.id === tab);
+    const id = window.setTimeout(() => setTab(TABS[(i + 1) % TABS.length].id), readMs);
+    return () => window.clearTimeout(id);
+  }, [reduce, manual, held, done, inView, tab, shownTab, readMs]);
 
   const visible = shown.split("\n");
 
@@ -144,7 +157,7 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
         className="flex gap-2 overflow-x-auto lg:flex-col"
         tabClassName={(sel) =>
           cn(
-            "flex min-w-40 items-start gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
+            "chip-t flex min-w-40 items-start gap-3 rounded-lg border px-4 py-3 text-left",
             sel ? "border-accent-strong bg-panel" : "border-transparent text-muted-foreground hover:bg-panel",
           )
         }
@@ -187,8 +200,13 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
         </div>
         {c.stats.length > 0 && (
           <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {c.stats.map((s) => (
-              <div key={s.label} className="rounded-lg border border-border bg-canvas p-4">
+            {c.stats.map((s, i) => (
+              // Follow-through: the stat cards trail the excerpt, one after another.
+              <div
+                key={`${shownTab}-${s.label}`}
+                style={{ "--i": i + 1 } as CSSProperties}
+                className="settle rounded-lg border border-border bg-canvas p-4"
+              >
                 <dd className="font-mono text-2xl font-semibold tabular-nums">{s.value}</dd>
                 <dt className="mt-1 text-sm text-muted-foreground">{s.label}</dt>
               </div>

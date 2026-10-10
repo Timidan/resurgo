@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useReducedMotion } from "motion/react";
 import type { RunSummary } from "@/lib/api";
+import { useBeatPlaying } from "@/lib/beat";
 import { fixLabel, fmtDur, statusMeta } from "@/lib/run";
 import { cn } from "@/lib/utils";
 
@@ -19,12 +20,14 @@ export function LiveTiles({ runs }: { runs: RunSummary[] }) {
   const reduce = useReducedMotion();
   const [tick, setTick] = useState(0);
   const n = runs.length;
+  // Secondary action: the spotlight holds still while a story plays its primary beat.
+  const beat = useBeatPlaying();
 
   useEffect(() => {
-    if (reduce || n < 2) return;
+    if (reduce || n < 2 || beat) return;
     const id = window.setTimeout(() => setTick((x) => x + 1), pause(tick));
     return () => window.clearTimeout(id);
-  }, [tick, reduce, n]);
+  }, [tick, reduce, n, beat]);
 
   if (n === 0) return null;
   const shown = reduce || n <= VISIBLE ? runs : Array.from({ length: VISIBLE }, (_, i) => runs[(tick + i) % n]);
@@ -44,16 +47,18 @@ export function LiveTiles({ runs }: { runs: RunSummary[] }) {
             const m = statusMeta(r.status);
             const on = i === spot;
             return (
-              <li key={`${r.id}-${i}`}>
+              // Keyed by run, so when the window slides only the arriving tile is new and settles in.
+              <li key={r.id} style={{ "--i": i } as CSSProperties} className={cn(tick > 0 && "settle")}>
                 <Link
                   to={`/runs/${r.id}`}
                   className={cn(
-                    "flex h-full flex-col gap-1 rounded-lg border bg-panel p-4 transition-[border-color,box-shadow] duration-300 hover:border-accent-strong",
+                    "chip-t flex h-full flex-col gap-1 rounded-lg border bg-panel p-4 hover:border-accent-strong",
                     on ? "border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_22%,transparent)]" : "border-border",
                   )}
                 >
                   <span className="flex items-center justify-between gap-3">
                     <span className="min-w-0 truncate font-mono text-sm font-semibold">
+                      {on && <span aria-hidden className="dot-pulse mr-2 inline-block size-1.5 rounded-full bg-accent align-middle" />}
                       {r.repo}
                       {r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
                     </span>
@@ -66,7 +71,11 @@ export function LiveTiles({ runs }: { runs: RunSummary[] }) {
                     Latest run · {fmtDur(r.duration_s)}
                     {r.fix_kind ? ` · ${fixLabel(r.fix_kind, r.needs_approval).toLowerCase()} fix` : ""}
                   </span>
-                  <span className={cn("text-xs text-muted-foreground transition-opacity duration-300", on ? "opacity-100" : "opacity-0")} aria-hidden>
+                  {/* Anticipation: the border moves first, the detail follows ~120 ms behind it. */}
+                  <span
+                    className={cn("chip-t text-xs text-muted-foreground", on ? "opacity-100 delay-120" : "opacity-0")}
+                    aria-hidden
+                  >
                     {r.verifier_steps.length
                       ? `${r.verifier_steps.filter((s) => s.ok).length} of ${r.verifier_steps.length} clean-container steps passed`
                       : "No clean-container steps recorded"}

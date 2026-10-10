@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, StatusBadge } from "@/components/ui-bits";
 import { useRun, type RunDetail } from "@/lib/api";
+import { lift } from "@/lib/beat";
+import { readingMs } from "@/lib/stream";
 import {
   buildEvents,
   buildTasks,
@@ -152,7 +154,7 @@ function RunBody({ d }: { d: RunDetail }) {
         push({ id: "sec-verifier", kind: "section", label: "Verifier: a separate clean container" });
       }
       setStepNo(i + 1);
-      push(eventRow(e, i, false));
+      push({ ...eventRow(e, i, false), fresh: true });
       if (e.kind === "model") {
         setThinking(true);
         await sleep(clamp((e.call.duration_s ?? 5) * 90, 700, 1500));
@@ -169,13 +171,16 @@ function RunBody({ d }: { d: RunDetail }) {
           await sleep(35);
           if (!live()) return;
         }
-        patchLast({ ok: stepOk(e.step), lines });
-        await sleep(160);
+        const ok = stepOk(e.step);
+        patchLast({ ok, lines, flash: !ok });
+        // Reading pause: long enough for the error lines, then the next beat.
+        await sleep(ok ? 160 : readingMs(lines.join(" ")));
       }
     }
     if (!live()) return;
     setState("done");
-  }, [events, reduce]);
+    if (s.verified) lift(); // the lifted-r wordmark rises once the replay verifies
+  }, [events, reduce, s.verified]);
 
   // Verified means the separate clean container ran steps and all of them passed (decided by the API).
   const verified = s.verified;
@@ -233,13 +238,13 @@ function RunBody({ d }: { d: RunDetail }) {
             className="mb-5 inline-flex rounded-lg border border-control bg-muted p-1"
             tabClassName={(sel) =>
               cn(
-                "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
+                "chip-t rounded-md px-4 py-1.5 text-sm font-semibold",
                 sel ? "bg-panel text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
               )
             }
           />
           {view === "diff" ? (
-            <div role="tabpanel" id={panelId("runview", "diff")} aria-labelledby={tabId("runview", "diff")}>
+            <div role="tabpanel" id={panelId("runview", "diff")} aria-labelledby={tabId("runview", "diff")} className="route-enter">
               <h2 id="terminal-h" className="text-2xl font-semibold">The fix</h2>
               {patch.length > 0 ? (
                 <>
@@ -257,7 +262,7 @@ function RunBody({ d }: { d: RunDetail }) {
               )}
             </div>
           ) : (
-          <div role="tabpanel" id={panelId("runview", "run")} aria-labelledby={tabId("runview", "run")}>
+          <div role="tabpanel" id={panelId("runview", "run")} aria-labelledby={tabId("runview", "run")} className="route-enter">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <h2 id="terminal-h" className="text-2xl font-semibold">What actually ran</h2>
             {events.length > 0 && (

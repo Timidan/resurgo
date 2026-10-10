@@ -13,6 +13,9 @@ export type TermRow = {
   duration?: number;
   lines?: string[];
   note?: string;
+  /** Set during a replay: the row arrives with a settle, and a failing step flashes red once. */
+  fresh?: boolean;
+  flash?: boolean;
 };
 
 const ERROR_LINE = /error|ERR_|failed|timed out|fatal|exit code|cannot|not found/i;
@@ -64,8 +67,8 @@ export function Terminal({
           const shown = compact ? lines.slice(-tailLines) : expanded ? lines : lines.slice(-tailLines);
           const hidden = compact ? 0 : lines.length - shown.length;
           return (
-            <li key={r.id} className="border-b border-border/60 px-3 py-2 last:border-b-0">
-              <div className="flex items-baseline gap-2">
+            <li key={r.id} className={cn("border-b border-border/60 px-3 py-2 last:border-b-0", r.fresh && "settle")}>
+              <div className={cn("-mx-1 flex items-baseline gap-2 rounded px-1", r.flash && "flash-bad")}>
                 <span className="w-4 shrink-0 text-center">
                   <Glyph ok={r.ok} kind={r.kind} />
                 </span>
