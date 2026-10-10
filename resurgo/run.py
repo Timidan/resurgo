@@ -352,13 +352,15 @@ class Box:
         self.install_dir = f"repo/{self.where[lock].rsplit('/', 1)[0]}" if "/" in self.where[lock] else "repo"
 
     def fill_env(self):
-        """Write .env from .env.example with safe dummy values, unless .env already exists."""
+        """Write .env from .env.example with safe dummy values, on every pipeline run so an edited
+        .env.example takes effect. A .env the repo commits is never overwritten."""
         found = self.read_many([self.rel(".env.example")])
         self.env_example = found.get(self.rel(".env.example"), "")
         if not self.env_example:
             return
-        q = shlex.quote(f"{self.proj}/.env")
-        self.raw(f"test -e {q} || cat > {q}", dummy_env(self.env_example))
+        q, tracked = shlex.quote(f"{self.proj}/.env"), shlex.quote(self.rel(".env"))
+        self.raw(f"git -C repo ls-files --error-unmatch -- {tracked} >/dev/null 2>&1 || cat > {q}",
+                 dummy_env(self.env_example))
         self.steps.append({"name": "env", "command": "fill .env from .env.example", "exit_code": 0,
                            "duration_s": 0, "output_tail": []})
 

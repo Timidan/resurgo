@@ -92,3 +92,36 @@ def test_gap_only_at_test_or_serve():
     assert box.accept_gap == ("test", "an Ethereum RPC endpoint")
     state, box, model = run("install", gap, gap)
     assert state["status"] == "invalid_proposal" and len(model.calls) == 2 and not box.gaps
+
+
+def test_fill_env_regenerates_runner_env_but_keeps_committed(tmp_path):
+    import subprocess
+    from resurgo import run as runner
+
+    def box_in(name, files):
+        root = tmp_path / name
+        (root / "repo").mkdir(parents=True)
+        for fname, text in files.items():
+            (root / "repo" / fname).write_text(text)
+        git = ["git", "-C", str(root / "repo"), "-c", "user.name=t", "-c", "user.email=t@t"]
+        for args in (["init", "-q"], ["add", "-A"], ["commit", "-qm", "x"]):
+            subprocess.run(git + args, check=True)
+
+        def raw(cmd, data=None, timeout=120):
+            p = subprocess.run(["bash", "-c", cmd], input=data or "", capture_output=True, text=True,
+                               cwd=root)
+            return p.returncode, p.stdout, p.stderr
+        box = runner.Box("c", "agent", "node:24-bookworm")
+        box.raw = raw
+        return box, root / "repo"
+
+    box, repo = box_in("made", {".env.example": "DB=/var/lib/x/db.sqlite\n"})
+    box.fill_env()
+    assert "/var/lib/x" in (repo / ".env").read_text()
+    (repo / ".env.example").write_text("DB=./db.sqlite\n")
+    box.fill_env()
+    assert "./db.sqlite" in (repo / ".env").read_text()
+
+    box, repo = box_in("committed", {".env.example": "A=1\n", ".env": "A=committed\n"})
+    box.fill_env()
+    assert (repo / ".env").read_text() == "A=committed\n"
