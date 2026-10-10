@@ -2,6 +2,7 @@
 
 Usage: uv run python -m resurgo.run <owner/repo> <sha>
 """
+import contextlib
 import json
 import os
 import subprocess
@@ -10,6 +11,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import neatlogs
 from dotenv import load_dotenv
 
 from resurgo import __version__
@@ -72,24 +74,59 @@ def start_container(name, run_id):
         raise RuntimeError(f"docker run failed: {out.strip()}")
 
 
-def clone_and_install(container, repo, sha):
+TRACING = False
+
+
+class _NoSpan:
+    def set_attribute(self, key, value):
+        pass
+
+
+def tool_span(name):
+    if TRACING:
+        return neatlogs.trace(name, kind="TOOL")
+    return contextlib.nullcontext(_NoSpan())
+
+
+def tool_span_root():
+    if TRACING:
+        return neatlogs.trace("resurgo.run", kind="WORKFLOW")
+    return contextlib.nullcontext(_NoSpan())
+
+
+def clone_and_install(container, repo, sha, role):
     """Run the fresh-machine sequence; stop at the first failing step."""
     steps = []
+    pm = None
 
-    def run(name, cmd):
-        rec, out = step(name, container, cmd)
-        steps.append(rec)
+    def run(name, cmd, post=None):
+        with tool_span(f"{role}.{name}") as sp:
+            rec, out = step(name, container, cmd)
+            if post:
+                post(rec, out)
+            steps.append(rec)
+            tail = "\n".join(rec["output_tail"])
+            sp.set_attribute("neatlogs.tool.name", f"{role}.{name}")
+            sp.set_attribute("command", cmd)
+            sp.set_attribute("exit_code", rec["exit_code"])
+            sp.set_attribute("duration_s", rec["duration_s"])
+            sp.set_attribute("output_tail", tail)
+            if rec["exit_code"]:
+                sp.set_attribute("neatlogs.tool.is_error", True)
+                sp.set_attribute("error", tail.splitlines()[-1] if tail else f"exit {rec['exit_code']}")
         return rec["exit_code"] == 0, out
 
+    def detect(rec, out):
+        nonlocal pm
+        pm = detect_pm(out.split()) if rec["exit_code"] == 0 else None
+        rec["package_manager"] = pm
+        if rec["exit_code"] == 0 and not pm:
+            rec["exit_code"] = 1
+            rec["output_tail"].append("no pnpm/yarn/npm lockfile found")
+
     ok, _ = run("clone", f"git clone -q https://github.com/{repo}.git repo && cd repo && git checkout -q {sha}")
-    pm = None
     if ok:
-        ok, out = run("detect", "ls -1a repo")
-        pm = detect_pm(out.split()) if ok else None
-        steps[-1]["package_manager"] = pm
-        if ok and not pm:
-            steps[-1]["exit_code"], ok = 1, False
-            steps[-1]["output_tail"].append("no pnpm/yarn/npm lockfile found")
+        ok, _ = run("detect", "ls -1a repo", detect)
     if ok:
         ok, _ = run("corepack", "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin")
     if ok:
@@ -104,45 +141,29 @@ def ensure_network():
             raise RuntimeError(f"network create failed: {out.strip()}")
 
 
-def trace(record):
+def init_tracing():
     key = os.environ.get("NEATLOGS_API_KEY")
     if not key:
-        print("warning: NEATLOGS_API_KEY not set, skipping neatlogs trace", file=sys.stderr)
-        return
+        print("warning: NEATLOGS_API_KEY not set, running without tracing", file=sys.stderr)
+        return False
     try:
-        import neatlogs
-        from opentelemetry import trace as ot
-        neatlogs.init(api_key=key, workflow_name="resurgo-run",
-                      tags=[f"repo:{record['repo']}", f"sha:{record['sha']}",
-                            f"agent_version:{record['agent_version']}", f"result:{record['result']}"])
-        tracer = ot.get_tracer("resurgo")
-
-        def ns(t):
-            return int(t * 1e9)
-
-        root = tracer.start_span("resurgo.run", start_time=ns(record["started"]))
-        root.set_attributes({"repo": record["repo"], "sha": record["sha"],
-                             "agent_version": record["agent_version"], "result": record["result"]})
-        ctx = ot.set_span_in_context(root)
-        for role in ("agent", "verifier"):
-            for s in record[role]["steps"]:
-                sp = tracer.start_span(f"{role}.{s['name']}", context=ctx, start_time=ns(s["started"]))
-                sp.set_attributes({"command": s["command"], "exit_code": s["exit_code"],
-                                   "output_tail": "\n".join(s["output_tail"])})
-                sp.end(end_time=ns(s["ended"]))
-        root.end(end_time=ns(record["ended"]))
-        neatlogs.flush()
+        neatlogs.init(api_key=key, endpoint="https://ingest.neatlogs.com",
+                      workflow_name="fresh-clone-check")
+        return True
     except Exception as e:  # tracing must never fail the run
-        print(f"warning: neatlogs trace failed: {scrub(str(e))}", file=sys.stderr)
+        print(f"warning: neatlogs init failed: {scrub(str(e))}", file=sys.stderr)
+        return False
 
 
-def main(repo, sha):
-    load_dotenv()
+def execute(repo, sha, root):
     started = time.time()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + sha[:7]
     record = {"run_id": run_id, "repo": repo, "sha": sha, "image": IMAGE,
-              "agent_version": __version__,"started": started,
+              "agent_version": __version__, "started": started,
               "agent": {"steps": []}, "verifier": {"steps": []}}
+    root.set_attribute("repo", repo)
+    root.set_attribute("sha", sha)
+    root.set_attribute("agent_version", __version__)
     created = []
     try:
         ensure_network()
@@ -150,7 +171,7 @@ def main(repo, sha):
             name = f"resurgo-{run_id.lower()}-{role}"
             start_container(name, run_id)
             created.append(name)
-            record[role] = clone_and_install(name, repo, sha)
+            record[role] = clone_and_install(name, repo, sha, role)
     except Exception as e:
         record["error"] = scrub(str(e))
     finally:
@@ -159,16 +180,32 @@ def main(repo, sha):
     record["ended"] = time.time()
     passed = [record[r].get("passed", False) for r in ("agent", "verifier")]
     record["result"] = "pass" if all(passed) else "fail"
+    root.set_attribute("result", record["result"])
     out = Path("runs") / run_id
     out.mkdir(parents=True, exist_ok=True)
     (out / "result.json").write_text(json.dumps(record, indent=2))
-    trace(record)
     failed = next((f"{r}:{s['name']} exit {s['exit_code']}" for r in ("agent", "verifier")
                    for s in record[r]["steps"] if s["exit_code"]), record.get("error", ""))
     print(f"{run_id} {repo}@{sha} result={record['result']} "
           f"agent={'ok' if passed[0] else 'fail'} verifier={'ok' if passed[1] else 'fail'} "
           f"{round(record['ended'] - started)}s {failed}".rstrip())
     return 0 if record["result"] == "pass" else 1
+
+
+def main(repo, sha):
+    global TRACING
+    load_dotenv()
+    TRACING = init_tracing()
+    try:
+        with tool_span_root() as root:
+            return execute(repo, sha, root)
+    finally:
+        if TRACING:
+            try:
+                neatlogs.flush()
+                neatlogs.shutdown()
+            except Exception as e:
+                print(f"warning: neatlogs flush failed: {scrub(str(e))}", file=sys.stderr)
 
 
 if __name__ == "__main__":
