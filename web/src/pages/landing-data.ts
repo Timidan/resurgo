@@ -52,7 +52,7 @@ const PROBLEM_COPY: Record<string, { title: string; body: string }> = {
 function findProblems(runs: RunSummary[]): Problem[] {
   return (["toolchain", "runtime", "clock"] as const).flatMap((key) => {
     for (const r of runs) {
-      const p = r.problems.find((x) => x.key === key);
+      const p = r.problems?.find((x) => x.key === key);
       if (p) return [{ key, ...PROBLEM_COPY[key], evidence: p.evidence, source: r.repo ?? "", runId: r.id }];
     }
     return [];
@@ -71,7 +71,8 @@ export function useLandingData(): LandingData {
       ? [...list].reverse().find((r) => r.repo === f.repo && r.path === f.path && r.id !== f.id && r.status !== "checking") ?? null
       : null;
     const real = list.filter((r) => r.status !== "checking");
-    const verified = real.filter((r) => r.verified);
+    // `verified` may be absent from the list; the status already says whether the clean container passed.
+    const verified = real.filter((r) => r.verified ?? (r.status === "runs" || r.status === "runs_with_gaps"));
     const fixedTimes = verified.filter((r) => r.fix_kind && r.duration_s != null).map((r) => r.duration_s as number);
     return {
       loading,

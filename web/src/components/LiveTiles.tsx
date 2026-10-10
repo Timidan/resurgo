@@ -76,9 +76,11 @@ export function LiveTiles({ runs }: { runs: RunSummary[] }) {
                     className={cn("chip-t text-xs text-muted-foreground", on ? "opacity-100 delay-120" : "opacity-0")}
                     aria-hidden
                   >
-                    {r.verifier_steps.length
-                      ? `${r.verifier_steps.filter((s) => s.ok).length} of ${r.verifier_steps.length} clean-container steps passed`
-                      : "No clean-container steps recorded"}
+                    {!r.verifier_steps
+                      ? ""
+                      : r.verifier_steps.length
+                        ? `${r.verifier_steps.filter((s) => s.ok).length} of ${r.verifier_steps.length} clean-container steps passed`
+                        : "No clean-container steps recorded"}
                   </span>
                 </Link>
               </li>

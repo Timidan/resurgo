@@ -79,7 +79,11 @@ export type AttemptBrief = {
   rationale: string | null;
 };
 
-/** One row of /api/runs. Carries what the landing page draws, so it needs no per-run fetch. */
+/**
+ * One row of /api/runs. The first block is always there (older records can have null `type` or
+ * `fix_kind`). The second block was added later and the list may omit it: read steps, attempts and
+ * the rest from /api/runs/{id} instead, and never assume these exist.
+ */
 export type RunSummary = {
   id: string;
   repo: string | null;
@@ -92,18 +96,18 @@ export type RunSummary = {
   fix_kind: string | null;
   needs_approval: boolean;
   started: number | null;
-  verified: boolean;
-  gaps: string[];
-  agent_steps: StepBrief[];
-  verifier_steps: StepBrief[];
-  attempts: AttemptBrief[];
-  rules_fired: string[];
-  model: string | null;
-  model_seconds: number | null;
-  error_line: string | null;
-  problems: { key: string; evidence: string }[];
-  patch_preview: string | null;
-  patch_added: number;
+  verified?: boolean;
+  gaps?: string[];
+  agent_steps?: StepBrief[];
+  verifier_steps?: StepBrief[];
+  attempts?: AttemptBrief[];
+  rules_fired?: string[];
+  model?: string | null;
+  model_seconds?: number | null;
+  error_line?: string | null;
+  problems?: { key: string; evidence: string }[];
+  patch_preview?: string | null;
+  patch_added?: number;
 };
 
 export type RunDetail = { summary: RunSummary; result: RunResult; fix_patch: string | null };
