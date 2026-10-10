@@ -17,7 +17,7 @@ export function parseRepo(input: string): string | null {
   return `${owner}/${name}`;
 }
 
-const NO_LIVE = "Live checks open with the GitHub App.";
+const NO_LIVE = "Install the Resurgo Agent GitHub App on a repository to have it checked.";
 
 type Asked = { nonce: number; text: string; repo: string | null; match: RunSummary | null };
 
