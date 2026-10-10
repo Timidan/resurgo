@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4KHBFDDVY11CXZ7G2730TGM",
+  "strategy": "manual-commit",
+  "branch": "web",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "web/src/components/NumberTicker.tsx",
+    "web/src/components/SolutionTabs.tsx",
+    "web/src/index.css",
+    "web/src/pages/Landing.tsx",
+    "web/src/pages/landing-data.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 30,
+    "cache_creation_tokens": 32026,
+    "cache_read_tokens": 2422582,
+    "output_tokens": 27120,
+    "api_call_count": 15
+  }
+}
