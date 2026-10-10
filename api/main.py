@@ -72,6 +72,9 @@ def _status(result: dict) -> str:
     # runs | runs_with_gaps | broken are current. fixed | fail come from earlier agent versions,
     # which did write the verifier's steps: judge those by the steps, not by the old word.
     raw = str(result.get("result") or "unknown")
+    # A code fix that passed in the clean container but waits for the owner: not a clean pass.
+    if raw != "broken" and result.get("needs_approval") and _verified(result) and (result.get("verifier") or {}).get("passed") is not False:
+        return "fix_awaiting_approval"
     if raw in ("runs", "runs_with_gaps", "broken"):
         return raw
     steps = _steps(result.get("verifier"))
@@ -231,7 +234,13 @@ def get_run(run_id: str) -> dict:
 
 
 # Agent view: the same facts as the site, in plain text. Paths are relative on purpose.
-_STATUS_WORD = {"runs": "Runs", "runs_with_gaps": "Runs with gaps", "broken": "Broken", "fixed": "Fixed, unverified"}
+_STATUS_WORD = {
+    "runs": "Runs",
+    "runs_with_gaps": "Runs with gaps",
+    "fix_awaiting_approval": "Fix verified · awaiting approval",
+    "broken": "Broken",
+    "fixed": "Fixed, unverified",
+}
 
 _HOW = """## How a run is proved
 
@@ -244,6 +253,7 @@ _HOW = """## How a run is proved
 
 - `runs` (✓ Runs): the verifier ran and every step passed.
 - `runs_with_gaps` (◐ Runs with gaps): the verifier passed, and the record lists `gaps` (things it could not exercise, such as a missing test script).
+- `fix_awaiting_approval` (◆ Fix verified · awaiting approval): the fix passed in the clean container and changes source code, so it waits for the owner's approval. The repository itself does not run clean yet; `verified` is true because the verifier passed.
 - `broken` (✗ Broken): a step failed and no verified fix exists.
 - `checking` (◌ Checking): the run has started and has no record yet.
 - `fixed` (◐ Fixed, unverified): only in records from an earlier agent version that have no verifier steps at all.
@@ -268,8 +278,10 @@ def _agent_view(short: bool) -> str:
     head = (
         "# Resurgo\n\n"
         "> Resurgo fresh-clones a repository, repairs what rotted, and proves the fix in a separate clean container.\n\n"
-        "Current state: a hackathon build. The GitHub App is not live; every run below was started by hand, "
-        "on public repositories. There are no customers, testimonials or benchmark claims on this site.\n\n"
+        "Current state: a hackathon build. The GitHub App \"Resurgo Agent\" is installed on the repositories you pick. "
+        "It opens a pull request only for a fix that passed in a clean container, and a change to source code waits "
+        "for your approval. The runs below are recorded runs on public repositories. "
+        "There are no customers, testimonials or benchmark claims on this site.\n\n"
     )
     live = ""
     try:
@@ -281,7 +293,7 @@ def _agent_view(short: bool) -> str:
             live = "## Latest run per repository\n\n" + "\n".join(
                 f"- [{r['repo']}{'/' + r['path'] if r['path'] else ''}](/runs/{r['id']}): "
                 f"{_STATUS_WORD.get(r['status'], r['status'])}"
-                f"{', verified' if r['verified'] else ''}"
+                f"{', verified' if r['verified'] and r['status'] != 'fix_awaiting_approval' else ''}"
                 f"{', fix: ' + r['fix_kind'] if r['fix_kind'] else ''}"
                 for r in latest.values()
             ) + "\n\n"

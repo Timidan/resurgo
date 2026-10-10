@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LIFT_EVENT } from "@/lib/beat";
 import { useTheme } from "@/lib/theme";
+import { Logo } from "@/components/Logo";
 import { INSTALL_URL } from "@/lib/utils";
 import Landing from "@/pages/Landing";
 import RunView from "@/pages/RunView";
@@ -62,9 +63,10 @@ function Header() {
           <NavLink to="/runs" className={link}>Runs</NavLink>
           <a
             href={INSTALL_URL}
-            className="press inline-flex min-h-9 items-center rounded-lg border border-accent-strong bg-accent-strong px-3 text-sm font-semibold text-on-accent hover:opacity-90"
+            className="press inline-flex min-h-9 items-center gap-2 rounded-lg border border-accent-strong bg-accent-strong px-3 text-sm font-semibold text-on-accent hover:opacity-90"
           >
-            Install<span className="hidden sm:inline">{" on GitHub"}</span>
+            <Logo name="github" size="1.25em" decorative />
+            <span>Install<span className="hidden sm:inline">{" on GitHub"}</span></span>
           </a>
           <ThemeToggle />
         </nav>

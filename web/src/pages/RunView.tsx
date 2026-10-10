@@ -179,11 +179,13 @@ function RunBody({ d }: { d: RunDetail }) {
     }
     if (!live()) return;
     setState("done");
-    if (s.verified) lift(); // the lifted-r wordmark rises once the replay verifies
-  }, [events, reduce, s.verified]);
+    if (s.verified && s.status !== "fix_awaiting_approval") lift(); // the lifted-r wordmark rises once the replay verifies clean
+  }, [events, reduce, s.verified, s.status]);
 
   // Verified means the separate clean container ran steps and all of them passed (decided by the API).
-  const verified = s.verified;
+  // A fix that is still awaiting approval passed there too, but is not a clean pass.
+  const awaiting = s.status === "fix_awaiting_approval";
+  const verified = s.verified && !awaiting;
   const doneLabel = verified ? `${meta.word} · verified clean` : meta.word;
   const approvals = (r.agent?.attempts ?? []).filter((a) => a.status === "needs_approval");
   const attempts = r.agent?.attempts ?? [];
@@ -214,6 +216,11 @@ function RunBody({ d }: { d: RunDetail }) {
           {s.status === "fixed" && (
             <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
               Unverified: this record has no clean-container steps, so nothing was proved.
+            </p>
+          )}
+          {awaiting && (
+            <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
+              The fix passed in a separate clean container. It changes code, so it waits for the owner&apos;s approval.
             </p>
           )}
           {verified && (

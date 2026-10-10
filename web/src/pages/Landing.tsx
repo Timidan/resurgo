@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimIcon, type IconName } from "@/components/art";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Logo, type LogoName } from "@/components/Logo";
 import AIReasoning from "@/components/smoothui/ai-reasoning";
 import { LiveTiles } from "@/components/LiveTiles";
 import { RepoChat } from "@/components/RepoChat";
@@ -70,8 +71,9 @@ function Hero({ data }: { data: LandingData }) {
         <div className="mt-9 flex flex-wrap items-center gap-3">
           <a
             href={INSTALL_URL}
-            className="press inline-flex min-h-12 items-center rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
+            className="press inline-flex min-h-12 items-center gap-2.5 rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
           >
+            <Logo name="github" size="1.25em" decorative />
             Install on GitHub
           </a>
           <Link
@@ -91,14 +93,14 @@ function Hero({ data }: { data: LandingData }) {
           </div>
         )}
         <p className="mt-10 text-sm text-muted-foreground">
-          Built on <span className="font-semibold text-foreground">neatlogs</span> tracing and{" "}
-          <span className="font-semibold text-foreground">Entire</span> checkpoints.
+          Built on <Logo name="neatlogs" size="0.8em" className="mx-[0.1em] text-foreground" /> tracing and{" "}
+          <Logo name="entire" size="0.8em" className="mx-[0.1em] text-foreground" /> checkpoints.
         </p>
       </div>
 
       <div className="min-w-0 lg:pt-4">
         {f ? (
-          <Story detail={f} loop label={`A real run of ${f.result.repo}, replayed`} />
+          <Story detail={f} replayOnHover label={`A real run of ${f.result.repo}, replayed`} />
         ) : data.loading ? (
           <p className="text-muted-foreground" role="status">◌ Loading a recorded run…</p>
         ) : null}
@@ -370,13 +372,16 @@ function Artifacts({ data }: { data: LandingData }) {
 }
 
 /* 10. Toolchains ----------------------------------------------------------- */
+const TOOLCHAINS: LogoName[] = ["node", "pnpm", "npm", "yarn", "foundry", "rust", "docker", "github"];
+
 function Toolchains() {
-  const names = ["Node", "pnpm", "npm", "Yarn", "Foundry", "Cargo", "Docker", "GitHub"];
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6" aria-label="Toolchains">
-      <p className="text-sm text-muted-foreground">What the runner is built to handle</p>
-      <ul className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-2xl font-semibold" role="list">
-        {names.map((n) => <li key={n}>{n}</li>)}
+    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6" aria-label="Works with">
+      <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">Works with</p>
+      <ul className="mt-4 flex flex-wrap items-center gap-4 text-foreground" role="list">
+        {TOOLCHAINS.map((n) => (
+          <li key={n} className="flex"><Logo name={n} size="24px" /></li>
+        ))}
       </ul>
     </section>
   );
@@ -389,13 +394,13 @@ function Closing({ data }: { data: LandingData }) {
     const m = statusMeta(s);
     return m.text === "text-runs" ? "bg-runs text-canvas" : m.text === "text-broken" ? "bg-broken text-canvas" : "bg-gaps text-canvas";
   };
-  const steps = ["Install the app", "Pick repos", "First check", "Weekly re-checks"];
+  const steps = ["Install the app", "Pick repos", "Fresh-clone check", "Pull request for a verified fix"];
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
       <Reveal>
-        <h2 className="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-7xl">Connect once. Resurgo keeps watch.</h2>
+        <h2 className="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-7xl">Install it. Pick the repos.</h2>
         <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-          The GitHub App is the next thing to build. Until it ships, every run on this site is a real one, run by hand.
+          Install the Resurgo Agent GitHub App on the repositories you pick. It opens a pull request only for a fix that passed in a clean container. A change to your code waits for your approval.
         </p>
       </Reveal>
 
@@ -419,13 +424,13 @@ function Closing({ data }: { data: LandingData }) {
             ))}
           </ol>
           <p className="mt-3 flex flex-wrap gap-x-5 font-mono text-xs text-muted-foreground">
-            <span>✓ Runs</span><span>◐ Runs with gaps or fixed, unverified</span><span>✗ Broken</span>
+            <span>✓ Runs</span><span>◐ Runs with gaps or fixed, unverified</span><span>◆ Fix verified, awaiting approval</span><span>✗ Broken</span>
           </p>
         </Reveal>
       )}
 
       <Reveal className="mt-16">
-        <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">Planned flow</p>
+        <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">How it works</p>
         <ol className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4" role="list">
           {steps.map((s, i) => (
             <li key={s} className="bg-canvas p-5">
