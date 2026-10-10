@@ -1,7 +1,7 @@
 import json
 from types import SimpleNamespace
 
-from resurgo.agent import build_graph, proposal_problem
+from resurgo.agent import build_graph, error_line, proposal_problem
 
 
 class FakeBox:
@@ -23,6 +23,9 @@ class FakeBox:
 
     def rule_files(self):
         return {}
+
+    def graph_search(self, query):
+        return None
 
     def pipeline(self):
         self.runs += 1
@@ -125,3 +128,30 @@ def test_fill_env_regenerates_runner_env_but_keeps_committed(tmp_path):
     box, repo = box_in("committed", {".env.example": "A=1\n", ".env": "A=committed\n"})
     box.fill_env()
     assert (repo / ".env").read_text() == "A=committed\n"
+
+
+def test_error_line_skips_wrappers():
+    out = ("> vitest run\n\x1b[31mFAIL\x1b[0m src/a.test.ts > renders\nError: Test timed out in 5000ms.\n"
+           " ELIFECYCLE  Command failed with exit code 1.\n")
+    assert error_line(out) == "FAIL src/a.test.ts > renders"
+    assert error_line("ok\n ELIFECYCLE Command failed with exit code 1.\n").startswith("ELIFECYCLE")
+    assert error_line("") == ""
+
+
+def test_graph_search_skips_silently_on_failure():
+    from resurgo import run as runner
+
+    def box_with(raw):
+        box = runner.Box("c", "agent", "node:24-bookworm")
+        box.raw = raw
+        return box
+
+    def timeout(cmd, data=None, timeout=120):
+        raise TimeoutError
+
+    for raw in (lambda cmd, data=None, timeout=120: (127, "", "entire: not found"),
+                lambda cmd, data=None, timeout=120: (0, "\n", ""), timeout):
+        assert box_with(raw).graph_search("test fails: x") is None
+    ok = box_with(lambda cmd, data=None, timeout=120: (0, "Index: 1ms\nsrc/a.ts:3-9 f s=1\nbody\n", ""))
+    got = ok.graph_search("test fails: x")
+    assert got["files"] == ["src/a.ts:3-9"] and "Index:" not in got["text"]

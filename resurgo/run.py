@@ -8,6 +8,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -96,10 +97,32 @@ def step(name, container, cmd, timeout, home=NODE_HOME, user="1000:1000"):
     return rec, out
 
 
+ENTIRE_BIN = "/home/agentops/.local/bin/entire"   # on the Docker host; RESURGO_ENTIRE_BIN overrides
+GRAPH_BYTES, GRAPH_TIMEOUT, GRAPH_TOP_K = 12_000, 120, 5
+GRAPH_NOISE = ("Index:", "Coverage:", "- warning")
+GRAPH_HIT = re.compile(r"^(?:\d+\.\s+)?([^\s:]+:\d+(?:-\d+)?)(?=\s|$)", re.M)
+_mounts = {}
+
+
+def entire_mount(image):
+    """`docker run` arguments that mount the entire binary read-only, or [] when the host path is
+    missing. `--mount` (unlike `-v`) fails on a missing path instead of creating a directory on
+    the host, so a throwaway container probes it once per process."""
+    path = os.environ.get("RESURGO_ENTIRE_BIN", ENTIRE_BIN)
+    if path and path not in _mounts:
+        mount = ["--mount", f"type=bind,src={path},dst=/usr/local/bin/entire,readonly"]
+        try:
+            code, _ = docker("run", "--rm", "--network", "none", *mount, image, "true", timeout=300)
+        except subprocess.TimeoutExpired:
+            code = 1
+        _mounts[path] = mount if code == 0 else []
+    return _mounts.get(path, [])
+
+
 def start_container(name, run_id, image):
     code, out = docker("run", "-d", "--name", name, "--label", f"resurgo.run={run_id}",
-                       "--network", NETWORK, *LIMITS, "--user", "1000:1000", image, "sleep", "infinity",
-                       timeout=900)
+                       "--network", NETWORK, *LIMITS, *entire_mount(image), "--user", "1000:1000", image,
+                       "sleep", "infinity", timeout=900)
     if code:
         raise RuntimeError(f"docker run failed: {out.strip()}")
     if not image.startswith("node:"):  # no home directory in the rust image
@@ -178,6 +201,32 @@ class Box:
                 sp.set_attribute("error", tail.splitlines()[-1] if tail else f"exit {rec['exit_code']}")
         self.last_out = out
         return rec["exit_code"] == 0
+
+    def graph_search(self, query):
+        """Repository context from `entire graph search` in this container: {"query", "files",
+        "bytes", "ms", "text"}, or None when it is unavailable or produced nothing."""
+        cmd = (f"entire graph search --repo {shlex.quote(self.proj)} --query {shlex.quote(query)} "
+               f"--format agent --profile full --top-k {GRAPH_TOP_K} --max-context-bytes {GRAPH_BYTES}")
+        w0 = time.monotonic()
+        with tool_span("entire.graph.search") as sp:
+            try:
+                code, out, _ = self.raw(cmd, timeout=GRAPH_TIMEOUT)
+            except Exception:       # timeout, docker error: the run goes on without it
+                code, out = -1, ""
+            lines = [l for l in out.splitlines() if not l.startswith(GRAPH_NOISE)]
+            text = scrub("\n".join(lines)).strip().encode()[:GRAPH_BYTES].decode(errors="ignore")
+            ms = round((time.monotonic() - w0) * 1000)
+            ok = code == 0 and bool(text)
+            files = list(dict.fromkeys(GRAPH_HIT.findall(text)))[:10] if ok else []
+            sp.set_attribute("neatlogs.tool.name", "entire.graph.search")
+            sp.set_attribute("query", query)
+            sp.set_attribute("hits", len(files))
+            sp.set_attribute("duration_ms", ms)
+            if not ok:
+                sp.set_attribute("neatlogs.tool.is_error", True)
+        if not ok:
+            return None
+        return {"query": query, "files": files, "bytes": len(text.encode()), "ms": ms, "text": text}
 
     def read(self, path):
         code, out, _ = self.raw(f"cat {shlex.quote('repo/' + path)}")

@@ -29,6 +29,12 @@ FOUNDRY_FILTER = re.compile(r"^\s*(no_match_test|no_match_contract|no_match_path
                             r"match_contract|match_path)\s*=\s*(.*?)\s*$", re.M)
 TEST_FILE = re.compile(r"(^|/)(tests?/|[^/]*\.t\.sol$|[^/]*\.(test|spec)\.[^/]+$)")
 MANIFEST_BYTES = 12_000
+GRAPH_STEPS = {"build", "test", "serve"}
+ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+ERROR_WORDS = re.compile(r"error|fail|cannot|can't|timed out|timeout|exception|not found|denied|"
+                         r"unexpected|missing|invalid", re.I)
+ERROR_NOISE = re.compile(r"ELIFECYCLE|Command failed|exit code|exited with|ERR_PNPM_RECURSIVE|"
+                         r"npm (ERR|error) (code|path|A complete)", re.I)
 
 SYSTEM = """You repair a project (Node.js, Foundry or Rust) that fails on a fresh machine. \
 Diagnose the failing step (install, build, test, or serve: start the server and GET /) from \
@@ -64,6 +70,7 @@ class State(TypedDict, total=False):
     user: str
     raw: str
     proposal: dict
+    graph_context: dict
     reasked: bool
     status: str
     detail: str
@@ -151,9 +158,17 @@ def proposal_problem(box, proposal):
     return None, weak, code
 
 
-def build_prompt(box, failure, attempts):
-    """User message: command, exit code, manifests, history, then as much output tail as fits
-    under the request limit."""
+def error_line(out):
+    """The most informative line of a step's output: the first line with an error word that is not
+    a generic "command failed" wrapper, else the last non-empty line. At most 200 characters."""
+    lines = [l for l in (ANSI.sub("", l).strip() for l in out.splitlines()[-200:]) if l]
+    pick = next((l for l in lines if ERROR_WORDS.search(l) and not ERROR_NOISE.search(l)), None)
+    return (pick or (lines[-1] if lines else ""))[:200]
+
+
+def build_prompt(box, failure, attempts, graph=None):
+    """User message: command, exit code, manifests, history, repository context (`graph`, from
+    Box.graph_search) when there is any, then as much output tail as fits under the request limit."""
     parts = [f"Project type: {box.ptype} ({box.why}); image {box.image}",
              f"Failing step: {failure['step']}", f"Command: {failure['command']}",
              f"Exit code: {failure['exit_code']}", f"Environment: {box.versions or 'unknown'}",
@@ -178,6 +193,9 @@ def build_prompt(box, failure, attempts):
             if name in LOCKFILE_NAMES:
                 text = "\n".join(text.splitlines()[:30]) + "\n[lockfile truncated]"
             parts.append(f"--- {path} ---\n{text[:MANIFEST_BYTES]}")
+    if graph:
+        parts.append("--- Repository context (entire-graph): the code most related to this failure ---\n"
+                     + graph["text"])
     head = "\n\n".join(parts) + "\n\n--- output tail ---\n"
     # leave room for a re-ask (the reply plus an error line) inside the same limit
     room = MAX_REQUEST_BYTES - len((SYSTEM + head).encode()) - 8_000
@@ -238,12 +256,18 @@ def build_graph(box, model, deadline):
     def diagnose(state, config: RunnableConfig):
         if over_budget():
             return {"status": "budget_exhausted", "detail": f"{box.cap_s // 60} minute budget used"}
-        user = build_prompt(box, state["failure"], state.get("attempts", []))
+        failure, graph = state["failure"], None
+        if failure["step"] in GRAPH_STEPS:
+            line = error_line(box.last_out)
+            if line:
+                graph = box.graph_search(f"{failure['step']} fails: {line}")
+        user = build_prompt(box, failure, state.get("attempts", []), graph)
         try:
             raw = ask([SystemMessage(SYSTEM), HumanMessage(user)], config)
         except (ModelLimited, ModelUnavailable) as e:
             return failed_model(e)
-        return {"system": SYSTEM, "user": user, "raw": raw, "reasked": False}
+        meta = {k: v for k, v in graph.items() if k != "text"} if graph else None
+        return {"system": SYSTEM, "user": user, "raw": raw, "reasked": False, "graph_context": meta}
 
     def judge(raw, failure):
         """(proposal, error, weakens): the proposal when it can go on, else why not. `weakens`
@@ -288,7 +312,7 @@ def build_graph(box, model, deadline):
                 "source": "model", "kind": proposal["kind"],
                 "files": [f["path"] for f in proposal["files"]], "rationale": proposal["rationale"],
                 "confidence": proposal["confidence"], "status": "rejected", "result": err,
-                "files_content": proposal["files"]}]
+                "files_content": proposal["files"], "graph_context": state.get("graph_context")}]
         return out
 
     def accept(state, proposal):
@@ -300,7 +324,7 @@ def build_graph(box, model, deadline):
         box.gaps.append(f"needs {proposal['reason']} ({step} step)")
         entry = {"source": "model", "kind": "gap", "files": [], "rationale": proposal["rationale"],
                  "confidence": proposal["confidence"], "status": "accepted",
-                 "result": proposal["reason"]}
+                 "result": proposal["reason"], "graph_context": state.get("graph_context")}
         return {"status": "passed", "detail": box.gaps[-1],
                 "attempts": list(state.get("attempts", [])) + [entry]}
 
@@ -309,7 +333,8 @@ def build_graph(box, model, deadline):
         attempts = list(state.get("attempts", []))
         entry = {"source": "model", "kind": p["kind"], "files": [f["path"] for f in p["files"]],
                  "rationale": p["rationale"], "confidence": p["confidence"], "result": None,
-                 "recovered_from_invalid_json": p.get("reasked", False)}
+                 "recovered_from_invalid_json": p.get("reasked", False),
+                 "graph_context": state.get("graph_context")}
         code = p.get("code_reason")
         if not p["files"]:
             problem = "proposal has no files"
