@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimIcon, type IconName } from "@/components/art";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Logo, type LogoName } from "@/components/Logo";
+import { Logo, LogoImage, type ImageName } from "@/components/Logo";
 import AIReasoning from "@/components/smoothui/ai-reasoning";
 import { LiveTiles } from "@/components/LiveTiles";
 import { RepoChat } from "@/components/RepoChat";
@@ -14,6 +14,8 @@ import type { RunDetail, Step } from "@/lib/api";
 import { fixLabel, fmtDur, parsePatch, statusMeta, stepOk } from "@/lib/run";
 import { cn, INSTALL_URL } from "@/lib/utils";
 import { useLandingData, type LandingData } from "./landing-data";
+
+const LABEL = "font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground";
 
 /** The command that reproduces the featured run, as logged in the build log. */
 const commandFor = (d: RunDetail | null) =>
@@ -92,10 +94,22 @@ function Hero({ data }: { data: LandingData }) {
             <CommandChip command={cmd} />
           </div>
         )}
-        <p className="mt-10 text-sm text-muted-foreground">
-          Built on <Logo name="neatlogs" size="0.8em" className="mx-[0.1em] text-foreground" /> tracing and{" "}
-          <Logo name="entire" size="0.8em" className="mx-[0.1em] text-foreground" /> checkpoints.
-        </p>
+        <section className="mt-12" aria-label="Built with">
+          <p className={LABEL}>Built with</p>
+          <ul className="mt-4 flex flex-wrap items-start gap-x-10 gap-y-6" role="list">
+            <li className="flex flex-col gap-2">
+              <span className="flex items-center gap-3">
+                <LogoImage name="neatlogsIcon" size="40px" className="rounded-lg" />
+                <Logo name="neatlogs" brand size="26px" className="text-foreground" />
+              </span>
+              <span className="text-xs text-muted-foreground">traces every run</span>
+            </li>
+            <li className="flex flex-col gap-2">
+              <Logo name="entire" brand size="32px" />
+              <span className="text-xs text-muted-foreground">checkpoints every commit</span>
+            </li>
+          </ul>
+        </section>
       </div>
 
       <div className="min-w-0 lg:pt-4">
@@ -372,16 +386,27 @@ function Artifacts({ data }: { data: LandingData }) {
 }
 
 /* 10. Toolchains ----------------------------------------------------------- */
-const TOOLCHAINS: LogoName[] = ["node", "pnpm", "npm", "yarn", "foundry", "rust", "docker", "github"];
+const TOOLCHAINS: ImageName[] = ["node", "pnpm", "npm", "yarn", "foundry", "rust", "docker"];
+const NAMES: Record<ImageName, string> = {
+  neatlogsIcon: "neatlogs", node: "Node.js", pnpm: "pnpm", npm: "npm", yarn: "Yarn", foundry: "Foundry", rust: "Cargo (Rust)", docker: "Docker",
+};
 
 function Toolchains() {
+  const item = "flex w-20 flex-col items-center gap-2 text-center text-xs text-muted-foreground";
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6" aria-label="Works with">
-      <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">Works with</p>
-      <ul className="mt-4 flex flex-wrap items-center gap-4 text-foreground" role="list">
+      <p className={LABEL}>Works with</p>
+      <ul className="mt-5 flex flex-wrap items-start gap-x-7 gap-y-6" role="list">
         {TOOLCHAINS.map((n) => (
-          <li key={n} className="flex"><Logo name={n} size="24px" /></li>
+          <li key={n} className={item}>
+            <LogoImage name={n} size="44px" />
+            {NAMES[n]}
+          </li>
         ))}
+        <li className={item}>
+          <Logo name="github" brand size="44px" />
+          GitHub
+        </li>
       </ul>
     </section>
   );

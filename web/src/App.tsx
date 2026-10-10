@@ -7,6 +7,7 @@ import { LIFT_EVENT } from "@/lib/beat";
 import { useTheme } from "@/lib/theme";
 import { Logo } from "@/components/Logo";
 import { INSTALL_URL } from "@/lib/utils";
+import Installed from "@/pages/Installed";
 import Landing from "@/pages/Landing";
 import RunView from "@/pages/RunView";
 import Runs from "@/pages/Runs";
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/runs" element={<Runs />} />
           <Route path="/runs/:id" element={<RunView />} />
+          <Route path="/installed/:id" element={<Installed />} />
           <Route
             path="*"
             element={<main className="mx-auto max-w-3xl px-6 py-24"><h1 className="text-4xl font-semibold">Page not found</h1><p className="mt-4"><Link className="underline" to="/">Back to the start</Link></p></main>}

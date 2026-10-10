@@ -1,13 +1,19 @@
 # One container behind the existing reverse proxy; no ports are published.
-# Set RESURGO_RUNS_DIR to the host directory that holds the run records.
+# Set RESURGO_RUNS_DIR to the host directory that holds the run records, and RESURGO_QUEUE_DIR to the
+# directory shared with the check worker (requests/ is written by the API, status/ by the worker).
 services:
   resurgo-web:
     build:
       context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
+    # The host account that owns the queue directory, so the worker can read and remove what the API writes.
+    user: "1000:1000"
+    environment:
+      QUEUE_DIR: /queue
     volumes:
       - ${RESURGO_RUNS_DIR:?set RESURGO_RUNS_DIR to the runs directory}:/runs:ro
+      - ${RESURGO_QUEUE_DIR:?set RESURGO_QUEUE_DIR to the queue directory}:/queue
     networks:
       - public_proxy
 

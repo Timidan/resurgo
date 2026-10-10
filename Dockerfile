@@ -13,7 +13,8 @@ RUN npm run build
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    RUNS_DIR=/runs
+    RUNS_DIR=/runs \
+    QUEUE_DIR=/queue
 
 WORKDIR /app
 
@@ -29,8 +30,10 @@ RUN pip install --no-cache-dir uv \
 COPY api/ ./api/
 COPY --from=web /src/web/dist ./web/dist
 
-RUN useradd --system --uid 10001 --no-create-home resurgo
-USER resurgo
+# uid 1000 is the host account that owns the queue directory, so the worker can read and remove
+# the request files the API writes. Everything under /app is read-only to it; nothing is written there.
+RUN useradd --uid 1000 --no-create-home resurgo
+USER 1000:1000
 
 EXPOSE 8000
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

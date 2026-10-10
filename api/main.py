@@ -1,13 +1,15 @@
 """Read-only public gallery API over the run records in RUNS_DIR, plus the built web app."""
 
 import json
+import logging
 import os
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 
 RUNS_DIR = Path(os.environ.get("RUNS_DIR", "")).resolve() if os.environ.get("RUNS_DIR") else None
 DIST_DIR = Path(os.environ.get("WEB_DIST", Path(__file__).resolve().parent.parent / "web" / "dist")).resolve()
@@ -312,6 +314,86 @@ def agent_view_md() -> PlainTextResponse:
 @app.get("/llms.txt", include_in_schema=False)
 def agent_view_llms() -> PlainTextResponse:
     return PlainTextResponse(_agent_view(short=True), media_type="text/plain; charset=utf-8")
+
+
+# GitHub App installs. The API only drops a request file into QUEUE_DIR/requests/ and reads
+# QUEUE_DIR/status/; a separate worker on the host runs the checks and writes the status files.
+INSTALLATION_ID = re.compile(r"[0-9]{1,12}")
+QUEUE_LIMIT = 50
+
+
+def _queue_dir() -> Path | None:
+    value = os.environ.get("QUEUE_DIR")
+    return Path(value) if value else None
+
+
+class _HideOAuthCode(logging.Filter):
+    """The callback URL carries GitHub's one-time `code`; keep it out of uvicorn's access log."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple) and len(record.args) > 2 and isinstance(record.args[2], str):
+            record.args = (*record.args[:2], re.sub(r"code=[^&\s]*", "code=-", record.args[2]), *record.args[3:])
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_HideOAuthCode())
+
+
+def _enqueue(queue: Path, installation_id: str, setup_action: str) -> bool:
+    """Write requests/<id>.json atomically, never over an existing file. False when the queue is full."""
+    requests = queue / "requests"
+    requests.mkdir(parents=True, exist_ok=True)
+    final = requests / f"{installation_id}.json"
+    if final.exists():
+        return True
+    if sum(1 for p in requests.iterdir() if p.suffix == ".json") >= QUEUE_LIMIT:
+        return False
+    body = {
+        "installation_id": int(installation_id),
+        "received": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "setup_action": setup_action,
+    }
+    tmp = requests / f".{installation_id}.{os.getpid()}.tmp"
+    tmp.write_text(json.dumps(body))
+    try:
+        os.link(tmp, final)  # fails if the file appeared meanwhile; it is left alone
+    except FileExistsError:
+        pass
+    finally:
+        tmp.unlink(missing_ok=True)
+    return True
+
+
+@app.get("/auth/github/callback", include_in_schema=False)
+def github_callback(installation_id: str = "", setup_action: str = "install") -> RedirectResponse:
+    # `code` is deliberately not a parameter: it is never read, stored or logged.
+    if not INSTALLATION_ID.fullmatch(installation_id):
+        return RedirectResponse("/", status_code=303)
+    target = f"/installed/{installation_id}"
+    queue = _queue_dir()
+    if queue is not None:
+        try:
+            if not _enqueue(queue, installation_id, "update" if setup_action == "update" else "install"):
+                target += "?queue=full"
+        except OSError:
+            pass  # the page then reads "waiting"; nothing was recorded
+    return RedirectResponse(target, status_code=303)
+
+
+@app.get("/api/installations/{installation_id}")
+def get_installation(installation_id: str) -> dict:
+    queue = _queue_dir()
+    if queue is None or not INSTALLATION_ID.fullmatch(installation_id):
+        raise HTTPException(404, "no such installation")
+    try:
+        data = json.loads((queue / "status" / f"{installation_id}.json").read_text())
+        if isinstance(data, dict):
+            return data
+    except (OSError, ValueError):
+        pass
+    if (queue / "requests" / f"{installation_id}.json").is_file():
+        return {"installation_id": int(installation_id), "state": "received"}
+    raise HTTPException(404, "no such installation")
 
 
 # The built web app, with SPA fallback. Never serve outside DIST_DIR.

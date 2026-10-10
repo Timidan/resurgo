@@ -140,3 +140,56 @@ function useFetch<T>(url: string | null): Async<T> {
 export const useRuns = () => useFetch<RunSummary[]>("/api/runs");
 /** One run's full record. Pass null to fetch nothing. */
 export const useRun = (id: string | null) => useFetch<RunDetail>(id ? `/api/runs/${encodeURIComponent(id)}` : null);
+
+export type InstallRepo = {
+  repo: string;
+  sha?: string;
+  path?: string;
+  state: "queued" | "checking" | "done" | "skipped" | string;
+  reason?: string | null;
+  run_id?: string | null;
+  result?: "runs" | "runs_with_gaps" | "broken" | "unsupported" | null;
+  needs_approval?: boolean;
+  pr?: { url: string; number?: number } | null;
+};
+
+/** `$QUEUE_DIR/status/<id>.json` as the worker writes it, or `{installation_id, state: "received"}`. */
+export type Installation = {
+  installation_id: number;
+  state: "received" | "checking" | "done" | "rejected" | string;
+  account?: string;
+  updated?: string;
+  reason?: string | null;
+  repos?: InstallRepo[];
+};
+
+const INSTALL_POLL_MS = 5000;
+
+/** One installation's status, re-fetched every 5 s until the worker reports `done` or `rejected`. */
+export function useInstallation(id: string): Async<Installation> {
+  const [state, setState] = useState<Async<Installation>>({ data: null, error: null, loading: true });
+  useEffect(() => {
+    const ctl = new AbortController();
+    let timer = 0;
+    setState({ data: null, error: null, loading: true });
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/installations/${encodeURIComponent(id)}`, { signal: ctl.signal });
+        if (!r.ok) throw new Error(r.status === 404 ? "Not found" : `Request failed (${r.status})`);
+        const data = (await r.json()) as Installation;
+        setState({ data, error: null, loading: false });
+        if (data.state === "done" || data.state === "rejected") return;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+        setState((s) => ({ data: s.data, error: (e as Error).message, loading: false }));
+      }
+      timer = window.setTimeout(tick, INSTALL_POLL_MS);
+    };
+    void tick();
+    return () => {
+      ctl.abort();
+      window.clearTimeout(timer);
+    };
+  }, [id]);
+  return state;
+}
