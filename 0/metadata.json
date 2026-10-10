@@ -1,0 +1,64 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4KESWXHQQ4REA5Z7CSGJPE7",
+  "session_id": "84dc7f6d-6177-43d4-a62b-8f8e40519bac",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T17:47:08.057747502Z",
+  "branch": "web",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "web/public/logos/SOURCES.md",
+    "web/public/logos/docker-mark-blue.svg",
+    "web/public/logos/foundry-logo.png",
+    "web/public/logos/neatlogs-icon.png",
+    "web/public/logos/node-js-icon.svg",
+    "web/public/logos/npm-square.svg",
+    "web/public/logos/pnpm-frame.svg",
+    "web/public/logos/rust-logo-blk.svg",
+    "web/public/logos/yarn-kitten-circle.svg"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "3f343042896c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 67615,
+    "cache_read_tokens": 309342,
+    "output_tokens": 1810,
+    "api_call_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-10T17:47:08.025850377Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 8,
+    "total_committed": 0,
+    "total_lines_changed": 8,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 35,
+      "user_lines_removed": 8,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "web/public/logos/SOURCES.md": 16,
+        "web/public/logos/docker-mark-blue.svg": 12,
+        "web/public/logos/node-js-icon.svg": 1,
+        "web/public/logos/npm-square.svg": 1,
+        "web/public/logos/pnpm-frame.svg": 3,
+        "web/public/logos/rust-logo-blk.svg": 1,
+        "web/public/logos/yarn-kitten-circle.svg": 1
+      },
+      "user_removed_per_file": {
+        "web/public/logos/SOURCES.md": 8
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4KESWXHQQ4REA5Z7CSGJPE7",
+  "strategy": "manual-commit",
+  "branch": "web",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "web/public/logos/SOURCES.md",
+    "web/public/logos/docker-mark-blue.svg",
+    "web/public/logos/foundry-logo.png",
+    "web/public/logos/neatlogs-icon.png",
+    "web/public/logos/node-js-icon.svg",
+    "web/public/logos/npm-square.svg",
+    "web/public/logos/pnpm-frame.svg",
+    "web/public/logos/rust-logo-blk.svg",
+    "web/public/logos/yarn-kitten-circle.svg"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 67615,
+    "cache_read_tokens": 309342,
+    "output_tokens": 1810,
+    "api_call_count": 5
+  }
+}

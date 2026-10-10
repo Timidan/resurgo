@@ -1,0 +1,57 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read web/NOTES.md, docs/ANIMATION.md, api/main.py, web/src/components/Logo.tsx and web/src/pages/Landing.tsx first. Commit in small steps.
+
+## 1. Logos: original artwork, large and very visible
+
+The owner says the logos are too small and must be the original logo images. New original files are in `web/public/logos/` (uncommitted). `web/public/logos/SOURCES.md` says where each came from and exactly how each one is drawn. Commit them.
+
+- **"Built with" row.** Replace the hero sentence "Built on neatlogs tracing and Entire checkpoints" with a row headed "BUILT WITH", in the same label style as "WORKS WITH".
+  - **neatlogs:** the app icon (`neatlogs-icon.png`, 40px) beside the wordmark (`neatlogs-wordmark.webp` as a mask, about 26px tall). Colour the wordmark #F5F5F2 in dark and ink in light.
+  - **Entire:** the full logo (`entire.svg` as a mask, about 32px tall). Colour it #1C1917 in light and #FFFFFF in dark. These are Entire's own colours.
+  - Under each logo, a small caption: "traces every run" and "checkpoints every commit".
+  - Leave cfo.ai out until the plan exists.
+- **"Works with" row.** Use the original full-colour files at 44px tall, drawn as plain `<img>` with their own colours (not masks): `node-js-icon.svg`, `pnpm-frame.svg`, `npm-square.svg`, `yarn-kitten-circle.svg`, `foundry-logo.png`, `rust-logo-blk.svg` (inverted to white in dark mode, as Checkly does for black logos), `docker-mark-blue.svg`, and the GitHub mark as a mask (#1F2328 in light, #FFFFFF in dark). Gap of about 28px. Show the name under each logo in small muted text, so the row reads at a glance.
+- Delete the old single-colour files the page no longer uses: `node.svg`, `pnpm.svg`, `npm.svg`, `yarn.svg`, `docker.svg`, `rust.svg`, `foundry-mark.png`. Keep `github.svg`, `bun.svg`, `cfo.svg`, `entire.svg` and the neatlogs files.
+- Keep accessible names: `alt`, or `role="img"` with `aria-label`, on every logo. Keep `title` tooltips.
+- At 420px both rows wrap cleanly, with no sideways scroll.
+
+## 2. The GitHub App callback (it is a 404 today)
+
+After someone installs the "Resurgo Agent" App, GitHub sends them to `/auth/github/callback?code=…&installation_id=…&setup_action=install`. Build the receiving end. Checks themselves are run by a separate worker on the host. It isn't in this repo yet and gets built next, so stick exactly to the file contract below.
+
+- **Queue directory.** Read `QUEUE_DIR` from the environment; the container mounts it at `/queue`. The API writes requests into `$QUEUE_DIR/requests/` and only reads `$QUEUE_DIR/status/`.
+- **`GET /auth/github/callback`** (FastAPI, ahead of the SPA fallback):
+  - Accept only an `installation_id` of 1 to 12 digits. Ignore `code` entirely; it is never stored or logged.
+  - Write `$QUEUE_DIR/requests/<installation_id>.json` containing `{"installation_id": <int>, "received": "<UTC ISO time>", "setup_action": "<install|update>"}`. Write it atomically (temp file, then rename). If the file already exists, leave it alone.
+  - If `requests/` already holds 50 or more files, don't write. Redirect anyway, and let the page say the queue is full.
+  - Redirect (303) to `/installed/<installation_id>`. On a bad or missing id, redirect to `/`.
+- **`GET /api/installations/{installation_id}`** returns `$QUEUE_DIR/status/<id>.json` if it exists. Otherwise it returns `{"installation_id": id, "state": "received"}` when a request file exists, and 404 when neither exists. The status file, written by the worker, looks like this:
+  ```json
+  {"installation_id": 170024627, "account": "Timidan", "updated": "<UTC ISO>",
+   "state": "received|checking|done|rejected", "reason": "<why, when rejected>",
+   "repos": [{"repo": "owner/name", "sha": "<12 chars>", "path": "",
+              "state": "queued|checking|done|skipped", "reason": "<why skipped>",
+              "run_id": "<id or null>", "result": "<runs|runs_with_gaps|broken|unsupported|null>",
+              "needs_approval": false, "pr": {"url": "...", "number": 1} }]}
+  ```
+- **Page `/installed/:id`** (React, in the site's style):
+  - Headline: "Resurgo Agent is installed."
+  - Then one plain line, true to the contract: Resurgo checks each repository you picked in a fresh container, one at a time, and opens a pull request only for a fix that passed in a clean container. Code changes wait for your approval.
+  - Then the live list from `/api/installations/:id`, polled every 5 seconds until the state is `done` or `rejected`. Each repo shows its state, its result badge (reuse the gallery's status styles, including "Fix verified · awaiting approval"), a link to `/runs/<run_id>` when there is one, and the PR link when there is one.
+  - "received" with no list yet reads "Waiting for the runner to pick this up." "rejected" shows the reason.
+  - Any motion follows docs/ANIMATION.md.
+- **Compose and Dockerfile.**
+  - In `deploy/compose.yaml`, mount `${RESURGO_QUEUE_DIR}` at `/queue` read-write and set `QUEUE_DIR=/queue`.
+  - Run the container as `user: "1000:1000"`, the host account that owns the queue, so the worker can read and remove what the API writes. The image must still work under that user.
+- **Tests.** One small API test, using FastAPI's TestClient and a temp QUEUE_DIR, that a good callback writes the request file and redirects, and that a bad id writes nothing. Run it with `uv run --with pytest --with httpx pytest -q api`, or however the repo runs its tests.
+
+## 3. Check your work
+
+Run `npm run build` and `web/check-render.mjs` (420 and 1280px, light and dark) against the API already running on port 8787. Take close-up screenshots of both logo rows in both themes, plus the `/installed/<id>` page for "received" and for a sample status (point a temporary QUEUE_DIR at a fake status file). Look at them yourself: are the logos large, crisp, in their original colours and clearly visible in both themes?
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- Never print secrets.
+- No tool or AI attribution in commits.
+- Finish with a short report: what changed, the check results with screenshot paths, and anything you weren't sure about.
