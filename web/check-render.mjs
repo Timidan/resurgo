@@ -1,6 +1,6 @@
 // Loads the built site in headless Chromium. Exits non-zero if a page renders blank, scrolls
-// sideways, shows an inner horizontal scrollbar on step output, or (landing) the stack strip and
-// the "Built on" line do not render named logos.
+// sideways, shows an inner horizontal scrollbar on step output, or (landing) the "Works with" and
+// "Built with" rows do not render named logos at their sizes.
 // Usage: node web/check-render.mjs [baseUrl] [runId] [screenshotDir]
 // Needs the API (which also serves web/dist) already running and `chromium` on PATH.
 import { spawn, spawnSync } from "node:child_process";
@@ -44,25 +44,25 @@ const PROBE = `(() => {
     .filter((e) => { const s = getComputedStyle(e); return (s.overflowX === 'auto' || s.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 1; })
     .map((e) => ({ el: name(e), step: e.matches(stepOut) }));
   const install = [...document.querySelectorAll('a')].filter((a) => /Install on GitHub/i.test(a.textContent || '')).map((a) => a.href);
-  // Logos: each one is an image with a name and a tooltip, drawn at a real size with a mask.
-  const logo = (e) => { const r = e.getBoundingClientRect(); return {
-    name: e.getAttribute('aria-label'), role: e.getAttribute('role'), title: e.getAttribute('title'),
-    w: Math.round(r.width), h: Math.round(r.height),
-    masked: /url\\(/.test(getComputedStyle(e).maskImage || getComputedStyle(e).webkitMaskImage || ''),
+  // Logos: each has an accessible name and a tooltip. A mask must have its file; an <img> must have loaded.
+  const logo = (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return {
+    name: e.getAttribute('aria-label') ?? e.getAttribute('alt'), title: e.getAttribute('title'),
+    w: Math.round(r.width), h: Math.round(r.height), color: cs.backgroundColor, filter: cs.filter,
+    drawn: e.tagName === 'IMG' ? (e.complete && e.naturalWidth > 0) : /url\\(/.test(cs.maskImage || cs.webkitMaskImage || ''),
+    plainImg: e.tagName === 'IMG', named: e.tagName === 'IMG' || e.getAttribute('role') === 'img',
   }; };
-  const strip = [...document.querySelectorAll('section[aria-label="Works with"] [data-logo]')].map(logo);
-  // What a screen reader says for the "Built on" line: logos read as their aria-label.
-  const readAs = (n) => n.nodeType === 3 ? n.textContent : n.getAttribute && n.getAttribute('role') === 'img'
-    ? n.getAttribute('aria-label') : [...n.childNodes].map(readAs).join('');
-  const builtP = [...document.querySelectorAll('p')].find((p) => p.querySelector('[data-logo=neatlogs]'));
-  const builtOn = builtP ? { text: readAs(builtP).replace(/\\s+/g, ' ').trim(), logos: [...builtP.querySelectorAll('[data-logo]')].map(logo) } : null;
+  const row = (label) => { const s = document.querySelector('section[aria-label="' + label + '"]');
+    return s ? { label: (s.querySelector('p') || {}).textContent, text: s.innerText.replace(/\\s+/g, ' ').trim(), logos: [...s.querySelectorAll('[data-logo]')].map(logo) } : null; };
+  const strip = row('Works with');
+  const builtOn = row('Built with');
   const buttons = [...document.querySelectorAll('a')].filter((a) => /Install/.test(a.textContent || '')).map((a) => !!a.querySelector('[data-logo=github]'));
   return JSON.stringify({ vw, scrollWidth: document.documentElement.scrollWidth, over, inner, install, strip, builtOn, buttons });
 })()`;
 
 const STRIP = ["Node.js", "pnpm", "npm", "Yarn", "Foundry", "Cargo (Rust)", "Docker", "GitHub"];
-const BUILT_ON = "Built on neatlogs tracing and Entire checkpoints.";
-const logoOk = (l) => l.role === "img" && l.name && l.title === l.name && l.w >= 12 && l.h >= 8 && l.masked;
+const BUILT_WITH = ["neatlogs app icon", "neatlogs", "Entire"];
+const logoOk = (l) => l.named && l.name && l.title === l.name && l.drawn && l.w >= 12;
+const NAMED_TALL = (px) => (l) => Math.abs(l.h - px) <= 1;
 
 /** One headless Chromium with a CDP socket, for viewport width, colour scheme and measurements. */
 async function openBrowser() {
@@ -135,13 +135,19 @@ for (const [name, path] of pages) {
       let logos = true;
       const logoNotes = [];
       if (path === "/") {
-        const names = m.strip.map((l) => l.name);
-        const stripOk = names.join("|") === STRIP.join("|") && m.strip.every(logoOk);
+        // "Works with": 44 px tall each, the seven full-colour files as plain <img>, GitHub as a mask.
+        const s = m.strip;
+        const stripOk = !!s && s.label === "Works with" && s.logos.map((l) => l.name).join("|") === STRIP.join("|") &&
+          s.logos.every((l) => logoOk(l) && NAMED_TALL(44)(l)) && s.logos.slice(0, 7).every((l) => l.plainImg) &&
+          STRIP.every((n) => s.text.includes(n));
+        // "Built with": icon 40, wordmark 26, Entire 32 px tall, each with its caption.
         const built = m.builtOn;
-        const builtOk = !!built && built.text === BUILT_ON && built.logos.length === 2 && built.logos.every(logoOk);
+        const builtOk = !!built && built.label === "Built with" && built.logos.map((l) => l.name).join("|") === BUILT_WITH.join("|") &&
+          built.logos.every(logoOk) && [40, 26, 32].every((h, i) => NAMED_TALL(h)(built.logos[i])) &&
+          built.text.includes("traces every run") && built.text.includes("checkpoints every commit");
         const btnOk = m.buttons.length >= 2 && m.buttons.every(Boolean);
         logos = stripOk && builtOk && btnOk;
-        logoNotes.push(`strip ${stripOk ? "ok" : "BAD " + JSON.stringify(m.strip)}`, `built-on ${builtOk ? "ok" : "BAD " + JSON.stringify(built)}`, `button marks ${btnOk ? "ok" : "BAD " + JSON.stringify(m.buttons)}`);
+        logoNotes.push(`works-with ${stripOk ? "ok" : "BAD " + JSON.stringify(s)}`, `built-with ${builtOk ? "ok" : "BAD " + JSON.stringify(built)}`, `button marks ${btnOk ? "ok" : "BAD " + JSON.stringify(m.buttons)}`);
       }
       const good = !sideways && stepScroll.length === 0 && installOk && logos;
       failed ||= !good;
