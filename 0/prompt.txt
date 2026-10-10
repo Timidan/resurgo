@@ -1,0 +1,50 @@
+You are building Resurgo during neatHack. Read hackathon.md, docs/PLAN.md and resurgo/*.py first. This task is agent v2. The v1 held-out sweep fixed none of the repos that were broken, and its run records show three causes. Fix each cause for the general case, not for individual repos. Keep the changes small.
+
+What the v1 run records show:
+- 6 of the 9 broken repos stopped at the model's first "code" proposal, because v1 never applies code fixes. In agent.py, `apply` records them as "code fix, not applied in this milestone". Examples: a Foundry test that still uses the removed `testFail*` convention, a turbo.json build-order fix, and a package.json dependency change.
+- 2 repos are Bun workspaces with `workspace:*` dependencies. They were installed with npm, which rejects that protocol, because the runner doesn't know Bun.
+- pnpm repos with a `lockfileVersion: '9.0'` lockfile and no `packageManager` field get the latest pnpm (12). That fails on build-script approval (ERR_PNPM_IGNORED_BUILDS) and no longer reads the `pnpm.*` settings in package.json. The model then spends attempts migrating settings. In the premise check, pinning the pnpm major that wrote the lockfile fixed rinne by hand.
+
+Changes:
+1. **Verify code fixes, but still hold them for approval.**
+   - In `apply`, apply a "code" proposal in the agent container and re-run it the way a config fix is, instead of ending the loop.
+   - A config proposal that `config_problem` rejects because it changes a non-config package.json key, or a file outside `CONFIG_NAMES`, is really a code change: treat it the same way. A lockfile with model-written content, or invalid JSON, is a malformed proposal: keep rejecting it as today.
+   - Mark such an attempt `needs_approval: true`, with the reason.
+   - If the run then passes and the verifier passes, the record's result is `runs` or `runs_with_gaps` as it is today, with `needs_approval` true.
+   - Update the SYSTEM prompt so it says honestly what happens now: code fixes are applied in an isolated sandbox to verify them, then held for the owner's approval. It should still tell the model to prefer config fixes. Add this line: never make a step pass by removing, skipping or weakening a test, a build or a check.
+   - Keep the 4-attempt budget and the time cap.
+   - In `resurgo/pr.py`, `refusal()` must refuse when `record.get("needs_approval")` is true, with the reason "this fix changes code and waits for the owner's approval". Add one case to its test.
+   - In the sweep summary (`entry_from_record`, `summarize`, the markdown), split verified fixes into two separate counts: "verified, PR-ready (config)" and "verified, awaiting approval (code)". Keep showing model calls and time. Extend the existing summary test for the split.
+2. **Support Bun.**
+   - Detect Bun from `bun.lock`, `bun.lockb` or a `packageManager: bun@…` field.
+   - Install Bun in the toolchain step without root, for example `npm install --prefix $HOME/.pm bun@<version>`. That location is already on PATH through ENV_PREFIX. Use the declared version if the repo declares one, otherwise the latest 1.x.
+   - Install dependencies with `bun install --frozen-lockfile`, or `bun install` when regenerating the lockfile. Run scripts with `bun run`.
+   - Add Bun to the lockfile and rules tables where it belongs.
+3. **Pin pnpm from the lockfile.** In `rules.package_manager`, map pnpm `lockfileVersion: '9.0'` to the pnpm 9 release already in `PM_VERSIONS` (9.15.9). A repo with no `packageManager` field then gets pinned, just as repos with the older lockfile versions already are. Add one case to the existing rules test.
+4. **Record the trace id.** When tracing is on, save the neatlogs trace id of the run's root span in result.json as `trace_id`. Find out how the SDK exposes it, through the span object or OpenTelemetry's current span context. Don't guess.
+5. **Bump the version.** Set `__version__` to "0.2.0".
+6. **Produce smaller diffs (last, and optional).** Do this only after items 1 to 5 are committed and their tests pass, and only if the development sweep hasn't started. When a run passes after more than one applied attempt:
+   - Revert the files that only failed attempts touched: restore them from git, or delete them if they were new.
+   - Re-run the pipeline once. Keep the smaller patch only if it passes; otherwise restore the files.
+   - Record what was pruned in the record as `agent.pruned`.
+   - The verifier then checks whichever patch is final.
+
+Checks:
+1. Run the unit tests with `uv run --with pytest pytest -q resurgo`. All must pass.
+2. Do real runs, on the development set only:
+   - `Timidan/rinne` at its dev SHA. The pnpm rule should fix it on the first attempt.
+   - `Timidan/sentry-somnia` at its dev SHA.
+   - One small, real Bun workspace repo that is NOT in eval/heldout.json and was last pushed between 2025-01 and 2026-06. Pin its SHA and add it to eval/dev.json.
+   - Then the whole development set through the sweep runner: `uv run python -m resurgo.sweep eval/dev.json --agent-version v2 --sweep-id v2-dev`.
+3. Do NOT run the held-out sweep.
+
+Commit in small steps. Update hackathon.md with what changed, why (the v1 evidence above), and the dev results.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- No unfiltered `docker ps`, `docker network ls` or `docker images`. Only touch `resurgo-*` resources and the images you pull.
+- Never open pull requests.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report: a results table for the dev runs (v1 against v2 where both exist), what changed, and what's left.
