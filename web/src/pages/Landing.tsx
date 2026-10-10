@@ -461,13 +461,13 @@ function Closing({ data }: { data: LandingData }) {
           <p className="mb-3 text-sm text-muted-foreground">
             Every run so far, oldest to newest ({history.length}). Open any bar.
           </p>
-          <ol className="flex h-20 gap-1" role="list">
+          <ol className="flex h-20 gap-0.5" role="list">
             {history.map((r) => (
-              <li key={r.id} className="flex-1">
+              <li key={r.id} className="min-w-0 flex-1">
                 <Link
                   to={`/runs/${r.id}`}
                   title={`${r.repo} · ${statusMeta(r.status).word}`}
-                  className={cn("flex h-full min-w-2 items-start justify-center rounded-sm pt-1.5 text-sm font-bold hover:opacity-80", tone(r.status))}
+                  className={cn("flex h-full min-w-0 items-start justify-center overflow-hidden rounded-sm pt-1.5 text-sm font-bold hover:opacity-80", tone(r.status))}
                 >
                   <span aria-hidden>{statusMeta(r.status).glyph}</span>
                   <span className="sr-only">{r.repo}: {statusMeta(r.status).word}</span>

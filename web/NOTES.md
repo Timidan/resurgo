@@ -123,3 +123,11 @@ Not done / limits:
 - **Page** `/installed/:id` polls every 5 s until `done` or `rejected`. The per-repo badge reuses the gallery statuses; `needs_approval` with `runs`/`runs_with_gaps` shows "Fix verified · awaiting approval".
 - **Container** runs as `1000:1000` (Dockerfile and `deploy/compose.yaml`); `/queue` is `${RESURGO_QUEUE_DIR}`. The runs directory must now be readable by uid 1000, not 10001. Image not built (no docker commands in this session).
 - **Test**: `uv run --with pytest --with httpx pytest -q api`.
+
+## Truth, copy and launch readiness (10 Oct)
+
+- **`weakens_tests`** (`api/main.py`, `_weakens_tests`): true when `fix.patch` adds a `match_*`/`no_match_*` key in any `foundry.toml`, deletes a test file, or changes a `"test"` line in any `package.json`. Such a record gets status `fix_skipped_tests` ("Fix skipped tests · not a repair", styled like broken), unless it is broken anyway. It is excluded from `pickFeatured`, the landing's run cards and the verified counts; the run view says so. Featuring prefers `runs` with a config fix.
+- **Set and version**: `/api/runs` carries `set`, `agent_version`, `sweep_id` (null on records that lack them; the 0.1.0 runs have no set). Landing stats are per (set, agent version), latest run per repo, from the records only. Held-out groups are shown when they exist, side by side as Before/After once there are two versions; otherwise each group stands alone under its label. No date such as "pinned on 9 Oct" is shown: no record carries one.
+- **Share cards**: `index.html` carries the full og/twitter set with an absolute image. `/runs/<id>` is served with its own title (`<repo> · <status word> · Resurgo`) and description (at most 160 chars), every value `html.escape`d. `SITE_URL` (default `https://resurgo.timidan.xyz`) sets the absolute URLs.
+- **`/data`** page, linked from the footer, the line under the install button and `/installed/<id>`. `robots.txt` and `sitemap.xml` are API routes ahead of the SPA fallback.
+- **Tests**: `api/test_site.py` (flag rule, robots).
