@@ -1,0 +1,31 @@
+You are building Resurgo during neatHack. Read docs/PLAN.md, docs/NEATLOGS.md, hackathon.md and resurgo/run.py first. Milestone 2a: the agent loop for Node projects. Keep the code small and readable.
+
+1. **Subdirectory support.** Add `--path <subdir>` to the CLI so a project inside a repo (for example `commentator/`) can run.
+2. **Deterministic rules first, before any model call.** The "fresh machine" baseline uses the current Node LTS (24) and the latest package manager. The rules pick:
+   - the Node major from `engines.node`, `.nvmrc`, `.node-version` or volta;
+   - the package manager and its major from the `packageManager` field, or else from the lockfile format (`pnpm-lock.yaml` lockfileVersion, yarn classic vs berry, npm lockfileVersion).
+   Record which rule fired. A rule is a fix candidate and must be verified like any other fix.
+3. **Agent loop in LangGraph.** When a step fails (install, then build if a build script exists):
+   - **diagnose:** call the model gateway with the command, exit code, output tail (trimmed so the request stays under 120 KB), and the relevant manifests;
+   - **propose:** require strict JSON: `{"kind":"config"|"code","files":[{"path":..., "content":...}],"rationale":..., "confidence":0-1}`;
+   - **apply:** apply config fixes (version pins, packageManager field, engines, .nvmrc, package-manager settings such as pnpm onlyBuiltDependencies, lockfile regeneration) inside the agent container;
+   - **rerun:** rerun the failed step;
+   - **loop** until it passes or the budget runs out: 4 fix attempts, 15 minutes per repo.
+   - Code fixes are NOT applied in this milestone. Record them as `needs_approval`.
+   - If the model returns invalid JSON, re-ask once with the error. Treat that as recovery and record it.
+4. **Model gateway client.** `POST {MODEL_GATEWAY_URL}/v1/completions` with `{"system","user"}` returns `{"model","effort","text"}`. On 429, read `retry_at`, stop and record `model_limited`; never retry in a loop. On 503, record `model_unavailable`. Wrap the gateway as a minimal LangChain chat model, so the neatlogs LangChain handler captures every call as an LLM span with prompt and response. Usage is unknown, so attach estimated token counts (characters / 4) clearly labelled `estimated`.
+5. **Verifier.** A fresh container clones the same SHA, writes ONLY the fix files from the agent's final diff, and runs install, then build if present. A run counts as `fixed` only if the verifier passes. Save the diff as `runs/<id>/fix.patch`.
+6. **Tracing.** Follow docs/NEATLOGS.md exactly: one `init()`, the handler attached at graph invoke via `config={"callbacks":[handler]}`, our existing WORKFLOW and TOOL spans kept, and `flush`/`shutdown` in finally.
+7. **Real runs, one each:**
+   - `Timidan/rinne` at `5c3370f9a736`;
+   - `Timidan/agent-arena` at `f6fc3243ac98` with `--path commentator`.
+   Record exactly what happens, including failures.
+8. Add one smoke check for the rules (lockfile and engines detection), commit in small steps, and update hackathon.md.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- No unfiltered `docker ps`, `docker network ls` or `docker images`. Only touch `resurgo-*` resources.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report: what works, real results for both runs, model calls made, and anything left undone.
