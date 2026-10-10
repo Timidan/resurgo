@@ -7,6 +7,7 @@ import { LIFT_EVENT } from "@/lib/beat";
 import { useTheme } from "@/lib/theme";
 import { Logo } from "@/components/Logo";
 import { INSTALL_URL } from "@/lib/utils";
+import Data from "@/pages/Data";
 import Installed from "@/pages/Installed";
 import Landing from "@/pages/Landing";
 import RunView from "@/pages/RunView";
@@ -82,7 +83,8 @@ function Footer() {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p>Resurgo, pronounced reh-SUR-go: Latin for &ldquo;I rise again&rdquo;. Built for neatHack, 10 to 12 October 2026.</p>
         <p className="flex flex-wrap items-center gap-x-5 gap-y-1">
-          <a href="/index.md" className="font-semibold text-foreground underline underline-offset-4">Agent view</a>
+          <Link to="/data" className="font-semibold text-foreground underline underline-offset-4">What Resurgo stores</Link>
+          <a href="/index.md" className="font-semibold text-foreground underline underline-offset-4">Agent view (Markdown for AI agents)</a>
           <span>Not affiliated with the tools or repositories named on this site.</span>
         </p>
       </div>
@@ -107,6 +109,7 @@ export default function App() {
           <Route path="/runs" element={<Runs />} />
           <Route path="/runs/:id" element={<RunView />} />
           <Route path="/installed/:id" element={<Installed />} />
+          <Route path="/data" element={<Data />} />
           <Route
             path="*"
             element={<main className="mx-auto max-w-3xl px-6 py-24"><h1 className="text-4xl font-semibold">Page not found</h1><p className="mt-4"><Link className="underline" to="/">Back to the start</Link></p></main>}
