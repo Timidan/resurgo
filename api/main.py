@@ -8,8 +8,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from html import escape
+
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 
 RUNS_DIR = Path(os.environ.get("RUNS_DIR", "")).resolve() if os.environ.get("RUNS_DIR") else None
 DIST_DIR = Path(os.environ.get("WEB_DIST", Path(__file__).resolve().parent.parent / "web" / "dist")).resolve()
@@ -70,7 +72,38 @@ def _verified(result: dict) -> bool:
     return bool(steps) and (verifier.get("passed") is True or all(s.get("exit_code") == 0 for s in steps))
 
 
-def _status(result: dict) -> str:
+_DIFF_HEADER = re.compile(r"^diff --git a/(.+?) b/(.+)$")
+_TEST_KEY = re.compile(r"^\+\s*(?:no_)?match_\w+\s*=")
+_TEST_SCRIPT = re.compile(r'^[+-]\s*"test"\s*:')
+_TEST_FILE = re.compile(r"(^|/)(tests?|__tests__|spec)/|\.(test|spec)\.\w+$|_test\.\w+$|\.t\.sol$|(^|/)test_[^/]*$")
+
+
+def _weakens_tests(patch: str | None) -> bool:
+    """True when the patch makes tests pass by skipping them: an added match_*/no_match_* key in
+    foundry.toml, a deleted test file, or a changed `test` script in package.json (the agent v2.1 rule)."""
+    path = ""
+    for line in (patch or "").splitlines():
+        m = _DIFF_HEADER.match(line)
+        if m:
+            path = m.group(2)
+            continue
+        name = path.rsplit("/", 1)[-1]
+        if line.startswith("deleted file mode") and _TEST_FILE.search(path):
+            return True
+        if name == "foundry.toml" and _TEST_KEY.match(line):
+            return True
+        if name == "package.json" and _TEST_SCRIPT.match(line):
+            return True
+    return False
+
+
+def _status(result: dict, weakens_tests: bool = False) -> str:
+    status = _judge(result)
+    # A fix that only skipped tests is not a repair, whatever the clean container then said.
+    return "fix_skipped_tests" if weakens_tests and status != "broken" else status
+
+
+def _judge(result: dict) -> str:
     # runs | runs_with_gaps | broken are current. fixed | fail come from earlier agent versions,
     # which did write the verifier's steps: judge those by the steps, not by the old word.
     raw = str(result.get("result") or "unknown")
@@ -150,13 +183,18 @@ def _summary(run_id: str, result: dict, patch: str | None) -> dict:
     calls = result.get("model_calls") or []
     model_s = sum(c.get("duration_s") or 0 for c in calls)
     patch_lines = patch.splitlines() if patch else []
+    weakens = _weakens_tests(patch)
     return {
         "id": run_id,
         "repo": result.get("repo"),
         "sha": result.get("sha"),
         "path": result.get("path") or "",
         "type": result.get("type"),
-        "status": _status(result),
+        "status": _status(result, weakens),
+        "set": result.get("set"),
+        "agent_version": result.get("agent_version"),
+        "sweep_id": result.get("sweep_id"),
+        "weakens_tests": weakens,
         "duration_s": round(ended - started, 1) if isinstance(started, (int, float)) and isinstance(ended, (int, float)) else None,
         "model_calls": len(calls),
         "fix_kind": _fix_kind(result, bool(patch)),
@@ -190,6 +228,7 @@ def _summary(run_id: str, result: dict, patch: str | None) -> dict:
 
 def _checking_row(entry: Path) -> dict:
     return {"id": entry.name, "repo": None, "sha": None, "path": "", "type": None, "status": "checking",
+            "set": None, "agent_version": None, "sweep_id": None, "weakens_tests": False,
             "duration_s": None, "model_calls": 0, "fix_kind": None, "needs_approval": False,
             "started": entry.stat().st_mtime, "verified": False, "gaps": [], "agent_steps": [],
             "verifier_steps": [], "attempts": [], "rules_fired": [], "model": None, "model_seconds": None,
@@ -240,6 +279,7 @@ _STATUS_WORD = {
     "runs": "Runs",
     "runs_with_gaps": "Runs with gaps",
     "fix_awaiting_approval": "Fix verified · awaiting approval",
+    "fix_skipped_tests": "Fix skipped tests · not a repair",
     "broken": "Broken",
     "fixed": "Fixed, unverified",
 }
@@ -248,14 +288,15 @@ _HOW = """## How a run is proved
 
 1. **Fresh clone.** The agent container clones the repository at a pinned commit, picks the package manager from the lockfile, and runs install, build, test and start in order, stopping at the first failure.
 2. **Diagnose.** Deterministic rules run first. A model is called only when a step failed; it proposes the least invasive fix (configuration before source code).
-3. **Repair.** The fix is applied as a patch and the failed step is run again. Source-code changes are proposed and marked `needs_approval`; they are not applied on their own.
-4. **Prove.** A second, separate container rebuilds from a fresh clone with the recipe and the patch only. Its steps are recorded as `verifier.steps`. The agent that wrote the fix cannot write to it.
+3. **Repair.** The fix is applied as a patch and the failed step is run again. A source-code change is marked `needs_approval`: older agent versions only proposed it, newer ones apply it inside the sandbox to test it, and in both cases it reaches your repository only after you approve.
+4. **Prove.** A second, separate container clones the same commit, applies only the fix and reruns every step. Its steps are recorded as `verifier.steps`. The agent that wrote the fix cannot write to it.
 
 ## Status vocabulary
 
 - `runs` (✓ Runs): the verifier ran and every step passed.
 - `runs_with_gaps` (◐ Runs with gaps): the verifier passed, and the record lists `gaps` (things it could not exercise, such as a missing test script).
 - `fix_awaiting_approval` (◆ Fix verified · awaiting approval): the fix passed in the clean container and changes source code, so it waits for the owner's approval. The repository itself does not run clean yet; `verified` is true because the verifier passed.
+- `fix_skipped_tests` (✗ Fix skipped tests · not a repair): the patch only excluded tests (a `match_*` or `no_match_*` key added to `foundry.toml`, a deleted test file, or a changed `test` script in `package.json`). It is not counted as a repair and is never featured. `weakens_tests` is true.
 - `broken` (✗ Broken): a step failed and no verified fix exists.
 - `checking` (◌ Checking): the run has started and has no record yet.
 - `fixed` (◐ Fixed, unverified): only in records from an earlier agent version that have no verifier steps at all.
@@ -265,7 +306,7 @@ A run counts as verified only when `verified` is true: the verifier has at least
 
 _API = """## API (read-only, JSON)
 
-- `GET /api/runs`: every run, newest first. Each item carries `id`, `repo`, `sha`, `path`, `type`, `status`, `verified`, `duration_s`, `model_calls`, `fix_kind` (`config`, `code` or null), `needs_approval`, `gaps`, `agent_steps` and `verifier_steps` (`name`, `ok`, `duration_s`), `attempts` (`kind`, `files`, `result`, `status`, `confidence`, `rationale`), `error_line`, `problems`, `patch_preview`.
+- `GET /api/runs`: every run, newest first. Each item carries `id`, `repo`, `sha`, `path`, `type`, `status`, `set` (`heldout`, `dev` or null), `agent_version`, `sweep_id`, `weakens_tests`, `verified`, `duration_s`, `model_calls`, `fix_kind` (`config`, `code` or null), `needs_approval`, `gaps`, `agent_steps` and `verifier_steps` (`name`, `ok`, `duration_s`), `attempts` (`kind`, `files`, `result`, `status`, `confidence`, `rationale`), `error_line`, `problems`, `patch_preview`.
 - `GET /api/runs/{id}`: one run as `{summary, result, fix_patch}`. `result` is the full record: steps with commands, exit codes, durations and output tails, model calls, and attempts. `fix_patch` is a unified diff or null.
 - Run ids look like `20261010T120139Z-5c3370f` (UTC start time, then the short commit).
 
@@ -295,7 +336,7 @@ def _agent_view(short: bool) -> str:
             live = "## Latest run per repository\n\n" + "\n".join(
                 f"- [{r['repo']}{'/' + r['path'] if r['path'] else ''}](/runs/{r['id']}): "
                 f"{_STATUS_WORD.get(r['status'], r['status'])}"
-                f"{', verified' if r['verified'] and r['status'] != 'fix_awaiting_approval' else ''}"
+                f"{', verified' if r['verified'] and r['status'] not in ('fix_awaiting_approval', 'fix_skipped_tests') else ''}"
                 f"{', fix: ' + r['fix_kind'] if r['fix_kind'] else ''}"
                 for r in latest.values()
             ) + "\n\n"
@@ -396,6 +437,67 @@ def get_installation(installation_id: str) -> dict:
     raise HTTPException(404, "no such installation")
 
 
+SITE_URL = os.environ.get("SITE_URL", "https://resurgo.timidan.xyz").rstrip("/")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots() -> PlainTextResponse:
+    body = f"User-agent: *\nAllow: /\nDisallow: /installed/\nDisallow: /auth/\n\nSitemap: {SITE_URL}/sitemap.xml\n"
+    return PlainTextResponse(body, media_type="text/plain; charset=utf-8")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap() -> Response:
+    urls = "".join(f"<url><loc>{SITE_URL}{p}</loc></url>" for p in ("/", "/runs", "/data"))
+    body = f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n'
+    return Response(body, media_type="application/xml")
+
+
+# Per-run share cards: the SPA's index.html with this run's title and description swapped in.
+_TITLE_TAG = re.compile(r"<title>.*?</title>", re.S)
+
+
+def _run_card(run_id: str) -> tuple[str, str] | None:
+    """(title, description) for a recorded run, or None when there is no such record."""
+    try:
+        result = _load(_run_dir(run_id))
+    except HTTPException:
+        return None
+    if not result or not result.get("repo"):
+        return None
+    try:
+        patch = (_run_dir(run_id) / "fix.patch").read_text()
+    except (OSError, HTTPException):
+        patch = None
+    status = _status(result, _weakens_tests(patch))
+    word = _STATUS_WORD.get(status, status)
+    n = len((result.get("agent") or {}).get("attempts") or [])
+    tried = f"{n} repair attempt{'' if n == 1 else 's'}" if n else "no repair attempted"
+    if status == "fix_skipped_tests":
+        proof = "tests were skipped, not repaired"
+    elif _verified(result) and status != "fix_awaiting_approval":
+        proof = "verified in a clean container"
+    elif status == "fix_awaiting_approval":
+        proof = "passed in a clean container, awaiting approval"
+    else:
+        proof = "not verified"
+    desc = f"{result['repo']}: {word}. {tried.capitalize()}, {proof}. A recorded Resurgo run you can replay."
+    return f"{result['repo']} · {word} · Resurgo", desc if len(desc) <= 160 else desc[:159].rstrip() + "…"
+
+
+def _with_card(html: str, title: str, desc: str, run_id: str) -> str:
+    t, d, u = escape(title, quote=True), escape(desc, quote=True), escape(f"{SITE_URL}/runs/{run_id}", quote=True)
+    html = _TITLE_TAG.sub(lambda _: f"<title>{t}</title>", html, count=1)
+    for key, value in (("name", "description"), ("property", "og:title"), ("property", "og:description"),
+                       ("property", "og:url"), ("name", "twitter:title"), ("name", "twitter:description")):
+        v = {"og:title": t, "twitter:title": t, "og:url": u}.get(value, d)
+        html = re.sub(
+            rf'(<meta\s+{key}="{re.escape(value)}"\s+content=")[^"]*(")',
+            lambda m: m.group(1) + v + m.group(2), html, count=1,
+        )
+    return html
+
+
 # The built web app, with SPA fallback. Never serve outside DIST_DIR.
 @app.get("/{rest:path}", include_in_schema=False)
 def web(rest: str):
@@ -407,4 +509,8 @@ def web(rest: str):
     index = DIST_DIR / "index.html"
     if not index.is_file():
         raise HTTPException(404, "web app is not built")
+    run_id = rest[len("runs/"):] if rest.startswith("runs/") else ""
+    card = _run_card(run_id) if RUN_ID.fullmatch(run_id) and RUNS_DIR is not None else None
+    if card:
+        return HTMLResponse(_with_card(index.read_text(), *card, run_id))
     return FileResponse(index)

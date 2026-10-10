@@ -49,20 +49,26 @@ export default function Installed() {
       <Eyebrow>GitHub App</Eyebrow>
       <h1 className="text-5xl font-semibold tracking-tight sm:text-6xl">Resurgo Agent is installed.</h1>
       <p className="mt-5 text-lg text-muted-foreground">
-        Resurgo checks each repository you picked in a fresh container, one at a time, and opens a pull request only for a fix that
-        passed in a clean container. Code changes wait for your approval.
+        Resurgo checks each repo you picked in a fresh container, one at a time, and opens a pull request only for a fix that
+        passed in a clean container. Code changes wait for your approval.{" "}
+        <Link to="/data" className="underline underline-offset-4 hover:text-foreground">What Resurgo stores</Link>
       </p>
 
       <section className="mt-10" aria-label="Installation status" aria-live="polite">
         {loading && <p className="text-muted-foreground" role="status">◌ Loading…</p>}
 
         {!data && !loading && queueFull && (
-          <p role="status"><span aria-hidden className="font-mono">◌ </span>The check queue is full right now, so this installation was not queued. Please try again later.</p>
+          <p role="status">
+            <span aria-hidden className="font-mono">◌ </span>The check queue is full right now, so this installation was not queued.{" "}
+            <a href={`/auth/github/callback?installation_id=${encodeURIComponent(id)}&setup_action=install`} className="font-semibold underline underline-offset-4 hover:text-accent-strong">
+              Queue the check again
+            </a>
+          </p>
         )}
         {!data && !loading && !queueFull && (
           <p className="text-muted-foreground" role="status">
             <span aria-hidden className="font-mono">◌ </span>
-            {error === "Not found" ? `No record of installation ${id} yet.` : `Could not load the status: ${error}`}
+            {error === "Not found" ? `No record of installation ${id} yet.` : "Unable to load the status. Reload the page to try again."}
           </p>
         )}
 
@@ -84,7 +90,17 @@ export default function Installed() {
             {data.state !== "rejected" && repos.length === 0 && (
               <p className="mt-4 text-muted-foreground" role="status">
                 <span aria-hidden className="font-mono">◌ </span>
-                {data.state === "done" ? "No repositories were checked." : "Waiting for the runner to pick this up."}
+                {data.state === "done" ? (
+                  <>
+                    No public repositories in this installation.{" "}
+                    <a href="https://github.com/apps/resurgo-agent/installations/new" className="font-semibold underline underline-offset-4 hover:text-accent-strong">
+                      Add one in the app&apos;s settings on GitHub
+                    </a>
+                    .
+                  </>
+                ) : (
+                  "Waiting for the runner to pick this up."
+                )}
               </p>
             )}
 

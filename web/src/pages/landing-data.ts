@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useRun, useRuns, type RunDetail, type RunSummary } from "@/lib/api";
-import { latestPerRepo, pickFeatured } from "@/lib/run";
+import { latestPerRepo, pickFeatured, runTag } from "@/lib/run";
 
 export type Problem = {
   key: string;
@@ -23,7 +23,21 @@ export type LandingData = {
   before: RunSummary | null;
   latest: RunSummary[];
   problems: Problem[];
-  stats: { recorded: number; verified: number; medianVerifiedS: number | null } | null;
+  /** One block per evaluation set and agent version, counted from the records only. */
+  stats: StatGroup[];
+};
+
+export type StatGroup = {
+  key: string;
+  /** "Held-out set, agent v1" */
+  label: string;
+  set: string | null;
+  version: string | null;
+  repos: number;
+  verified: number;
+  /** Repos whose fix only skipped tests: never counted as verified. */
+  skipped: number;
+  medianVerifiedS: number | null;
 };
 
 const median = (xs: number[]) => {
@@ -59,6 +73,41 @@ function findProblems(runs: RunSummary[]): Problem[] {
   });
 }
 
+/**
+ * Latest run per repo within each (set, agent version). The held-out groups win; with none recorded,
+ * whatever groups exist are shown under their own labels.
+ */
+function statGroups(real: RunSummary[]): StatGroup[] {
+  const by = new Map<string, RunSummary[]>();
+  for (const r of real) {
+    const key = `${r.set ?? ""}|${r.agent_version ?? ""}`;
+    by.set(key, [...(by.get(key) ?? []), r]);
+  }
+  const groups = [...by.entries()].map(([key, rs]): StatGroup => {
+    const latest = latestPerRepo(rs);
+    const skipped = latest.filter((r) => r.status === "fix_skipped_tests" || r.weakens_tests);
+    // `verified` may be absent from the list; the status already says whether the clean container passed.
+    const verified = latest.filter(
+      (r) => !skipped.includes(r) && (r.verified ?? (r.status === "runs" || r.status === "runs_with_gaps" || r.status === "fix_awaiting_approval")),
+    );
+    const times = verified.filter((r) => r.fix_kind && r.duration_s != null).map((r) => r.duration_s as number);
+    return {
+      key,
+      label: runTag(rs[0]) ?? "Earlier runs, set not recorded",
+      set: rs[0].set ?? null,
+      version: rs[0].agent_version ?? null,
+      repos: latest.length,
+      verified: verified.length,
+      skipped: skipped.length,
+      medianVerifiedS: median(times),
+    };
+  });
+  const heldout = groups.filter((g) => g.set === "heldout");
+  return (heldout.length ? heldout : groups).sort((a, b) =>
+    (a.version ?? "").localeCompare(b.version ?? "", "en", { numeric: true }),
+  );
+}
+
 export function useLandingData(): LandingData {
   const { data: runs, loading, error } = useRuns();
   const list = useMemo(() => runs ?? [], [runs]);
@@ -71,9 +120,6 @@ export function useLandingData(): LandingData {
       ? [...list].reverse().find((r) => r.repo === f.repo && r.path === f.path && r.id !== f.id && r.status !== "checking") ?? null
       : null;
     const real = list.filter((r) => r.status !== "checking");
-    // `verified` may be absent from the list; the status already says whether the clean container passed.
-    const verified = real.filter((r) => r.verified ?? (r.status === "runs" || r.status === "runs_with_gaps" || r.status === "fix_awaiting_approval"));
-    const fixedTimes = verified.filter((r) => r.fix_kind && r.duration_s != null).map((r) => r.duration_s as number);
     return {
       loading,
       error,
@@ -83,7 +129,7 @@ export function useLandingData(): LandingData {
       before,
       latest: latestPerRepo(list),
       problems: findProblems(real),
-      stats: real.length ? { recorded: real.length, verified: verified.length, medianVerifiedS: median(fixedTimes) } : null,
+      stats: statGroups(real),
     };
   }, [list, featured, featuredSummary, loading, error]);
 }

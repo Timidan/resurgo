@@ -96,6 +96,12 @@ export type RunSummary = {
   fix_kind: string | null;
   needs_approval: boolean;
   started: number | null;
+  /** Which evaluation set the record belongs to ("heldout", "dev"), and the agent that produced it. */
+  set?: string | null;
+  agent_version?: string | null;
+  sweep_id?: string | null;
+  /** The patch only skipped tests (see api/main.py `_weakens_tests`). */
+  weakens_tests?: boolean;
   verified?: boolean;
   gaps?: string[];
   agent_steps?: StepBrief[];
