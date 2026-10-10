@@ -8,10 +8,11 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
-from importlib.metadata import version
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+from resurgo import __version__
 
 IMAGE = "node:24-bookworm"
 NETWORK = "resurgo-runs"
@@ -90,7 +91,7 @@ def clone_and_install(container, repo, sha):
             steps[-1]["exit_code"], ok = 1, False
             steps[-1]["output_tail"].append("no pnpm/yarn/npm lockfile found")
     if ok:
-        ok, _ = run("corepack", "corepack enable --install-directory $HOME/.local/bin")
+        ok, _ = run("corepack", "mkdir -p $HOME/.local/bin && corepack enable --install-directory $HOME/.local/bin")
     if ok:
         ok, _ = run("install", f"cd repo && {INSTALL[pm]}")
     return {"package_manager": pm, "passed": ok, "steps": steps}
@@ -140,7 +141,7 @@ def main(repo, sha):
     started = time.time()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + sha[:7]
     record = {"run_id": run_id, "repo": repo, "sha": sha, "image": IMAGE,
-              "agent_version": version("resurgo"), "started": started,
+              "agent_version": __version__,"started": started,
               "agent": {"steps": []}, "verifier": {"steps": []}}
     created = []
     try:
