@@ -12,6 +12,14 @@ const T_CHECK = "bg-checking-soft text-checking";
 const STATUS: Record<string, StatusMeta> = {
   runs: { word: "Runs", glyph: "✓", tone: T_RUNS, text: "text-runs" },
   runs_with_gaps: { word: "Runs with gaps", glyph: "◐", tone: T_GAPS, text: "text-gaps" },
+  // The fix passed in the clean container but changes code and waits for the owner. Dashed outline, so
+  // it can't be read as a clean pass (solid green) or as "Runs with gaps" (solid amber).
+  fix_awaiting_approval: {
+    word: "Fix verified · awaiting approval",
+    glyph: "◆",
+    tone: "border border-dashed border-gaps bg-gaps-soft text-gaps",
+    text: "text-gaps",
+  },
   broken: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   fail: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   // Only a record with no verifier steps at all lands here (see api/main.py).

@@ -72,7 +72,8 @@ export function Story({
   const broken = statusMeta("broken");
   const repoMeta = f.repoState === "final" ? meta : f.repoState === "broken" ? broken : checking;
   const repoWord = f.repoState === "broken" ? "Broken from a fresh clone" : repoMeta.word;
-  const verified = s.verified;
+  const awaiting = s.status === "fix_awaiting_approval";
+  const verified = s.verified && !awaiting; // a clean pass; an awaiting fix is not one
   const dim = (i: number) => f.focus >= 0 && f.focus !== i;
 
   // While this story plays its primary beat, secondary actions on the page hold still.
@@ -90,7 +91,7 @@ export function Story({
       {/* The windows animate; this is what a screen reader gets. */}
       <p className="sr-only">
         {detail.result.repo} at {detail.result.sha}: {meta.word}
-        {verified ? ", verified in a separate clean container" : ""}. {s.model_calls} model call{s.model_calls === 1 ? "" : "s"},{" "}
+        {verified ? ", verified in a separate clean container" : awaiting ? ", the fix passed in a separate clean container and waits for the owner's approval" : ""}. {s.model_calls} model call{s.model_calls === 1 ? "" : "s"},{" "}
         {fmtDur(s.duration_s)} wall time.
       </p>
       <div aria-hidden data-leaving={leaving} className="story-group space-y-4">
@@ -114,7 +115,9 @@ export function Story({
             {f.repoState === "checking" && <p className="mt-2 text-sm text-muted-foreground">Cloning fresh and running the recorded steps.</p>}
             {f.repoState === "final" && (
               <p className="settle mt-2 text-sm text-muted-foreground">
-                {story.hasFailure ? "Repaired, then re-proved in a clean container." : "Checked from a fresh clone."}
+                {awaiting
+                  ? "The fix passed in a clean container. It changes code, so it waits for approval."
+                  : story.hasFailure ? "Repaired, then re-proved in a clean container." : "Checked from a fresh clone."}
               </p>
             )}
           </div>

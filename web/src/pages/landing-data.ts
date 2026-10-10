@@ -72,7 +72,7 @@ export function useLandingData(): LandingData {
       : null;
     const real = list.filter((r) => r.status !== "checking");
     // `verified` may be absent from the list; the status already says whether the clean container passed.
-    const verified = real.filter((r) => r.verified ?? (r.status === "runs" || r.status === "runs_with_gaps"));
+    const verified = real.filter((r) => r.verified ?? (r.status === "runs" || r.status === "runs_with_gaps" || r.status === "fix_awaiting_approval"));
     const fixedTimes = verified.filter((r) => r.fix_kind && r.duration_s != null).map((r) => r.duration_s as number);
     return {
       loading,
