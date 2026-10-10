@@ -1,0 +1,52 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4JRKWNGT40C0X60DSJZ3TRD",
+  "session_id": "c56a2740-7fbf-40d5-8221-b64594d3c40f",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T11:19:22.761214258Z",
+  "branch": "main",
+  "checkpoints_count": 12,
+  "files_touched": [
+    "resurgo/run.py"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "3333e185a2e6",
+  "checkpoint_transcript_start": 207,
+  "transcript_lines_at_start": 207,
+  "compact_transcript_start": 36,
+  "token_usage": {
+    "input_tokens": 124,
+    "cache_creation_tokens": 24161,
+    "cache_read_tokens": 7716074,
+    "output_tokens": 9234,
+    "api_call_count": 50
+  },
+  "session_metrics": {
+    "turn_count": 12
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-10T11:19:22.715786638Z",
+    "agent_lines": 4,
+    "agent_removed": 2,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4,
+    "total_lines_changed": 6,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 10,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".claude/settings.local.json": 10
+      }
+    }
+  ]
+}
