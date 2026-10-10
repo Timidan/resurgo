@@ -47,7 +47,7 @@ function CommandChip({ command }: { command: string }) {
             setTimeout(() => setCopied(false), 1800);
           }).catch(() => undefined);
         }}
-        className="press shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        className="press shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted pointer-coarse:min-h-11 pointer-coarse:px-4"
       >
         <span aria-live="polite">
           <span key={String(copied)} className="settle inline-block">{copied ? "✓ Copied" : "Copy"}</span>

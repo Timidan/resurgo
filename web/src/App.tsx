@@ -47,7 +47,7 @@ function Header() {
     };
   }, []);
   const link = ({ isActive }: { isActive: boolean }) =>
-    `rounded px-1 py-1 text-sm font-semibold underline-offset-8 hover:text-foreground ${isActive ? "text-foreground underline" : "text-muted-foreground"}`;
+    `inline-flex items-center rounded px-1 py-1 text-sm font-semibold underline-offset-8 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:px-2 ${isActive ? "text-foreground underline" : "text-muted-foreground"}`;
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
@@ -65,7 +65,7 @@ function Header() {
           <NavLink to="/runs" className={link}>Runs</NavLink>
           <a
             href={INSTALL_URL}
-            className="press inline-flex min-h-9 items-center gap-2 rounded-lg border border-accent-strong bg-accent-strong px-3 text-sm font-semibold text-on-accent hover:opacity-90"
+            className="press inline-flex min-h-9 items-center gap-2 rounded-lg border border-accent-strong pointer-coarse:min-h-11 bg-accent-strong px-3 text-sm font-semibold text-on-accent hover:opacity-90"
           >
             <Logo name="github" size="1.25em" decorative />
             <span>Install<span className="hidden sm:inline">{" on GitHub"}</span></span>
