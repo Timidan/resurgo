@@ -157,6 +157,8 @@ export type InstallRepo = {
   result?: "runs" | "runs_with_gaps" | "broken" | "unsupported" | null;
   needs_approval?: boolean;
   pr?: { url: string; number?: number } | null;
+  /** UTC ISO time the worker began this check; null before it starts. */
+  started?: string | null;
 };
 
 /** `$QUEUE_DIR/status/<id>.json` as the worker writes it, or `{installation_id, state: "received"}`. */
@@ -165,7 +167,10 @@ export type Installation = {
   state: "received" | "checking" | "done" | "rejected" | string;
   account?: string;
   updated?: string;
+  /** Why nothing is moving yet, or why the installation was rejected. */
   reason?: string | null;
+  /** UTC ISO time the worker accepted the request. */
+  queued_at?: string | null;
   repos?: InstallRepo[];
 };
 
