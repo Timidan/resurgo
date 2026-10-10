@@ -46,7 +46,7 @@ function Reply({ asked, latest, onPick }: { asked: Asked; latest: RunSummary[]; 
                 <button
                   type="button"
                   onClick={() => r.repo && onPick(r.repo)}
-                  className="rounded-md border border-control bg-panel px-3 py-1.5 font-mono text-sm hover:bg-muted"
+                  className="press rounded-md border border-control bg-panel px-3 py-1.5 font-mono text-sm hover:bg-muted"
                 >
                   {r.repo}
                 </button>
@@ -100,7 +100,7 @@ export function RepoChat({ latest }: { latest: RunSummary[] }) {
             <button
               type="submit"
               disabled={!value.trim()}
-              className="min-h-12 rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="press min-h-12 rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Check
             </button>

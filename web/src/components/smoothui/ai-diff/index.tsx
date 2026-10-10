@@ -1,5 +1,6 @@
 "use client";
 
+import { EASE_ENTER } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
@@ -9,8 +10,8 @@ const SPRING_DEFAULT = {
   duration: 0.25,
   type: "spring" as const,
 };
-const EASE_OUT = [0.23, 1, 0.32, 1] as const;
-const LINE_STAGGER = 0.02;
+const EASE_OUT = EASE_ENTER;
+const LINE_STAGGER = 0.045;
 const WIPE_DURATION = 0.28;
 const FLASH_DURATION = 0.35;
 const SUCCESS_TINT = "var(--runs-soft)";

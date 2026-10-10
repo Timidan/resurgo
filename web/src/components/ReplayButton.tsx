@@ -26,7 +26,7 @@ export function ActionButton({
   className?: string;
 }) {
   const layer =
-    "col-start-1 row-start-1 inline-flex items-center justify-center gap-2.5 whitespace-nowrap transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none";
+    "col-start-1 row-start-1 inline-flex items-center justify-center gap-2.5 whitespace-nowrap transition-[opacity,transform] duration-180 ease-(--ease-enter) motion-reduce:transition-none";
   return (
     <button
       type="button"
@@ -34,8 +34,10 @@ export function ActionButton({
       aria-busy={state === "loading"}
       disabled={state === "loading"}
       className={cn(
-        "grid min-h-12 cursor-pointer place-items-center rounded-lg border px-6 text-base font-semibold transition-colors duration-300",
+        "press grid min-h-12 cursor-pointer place-items-center rounded-lg border px-6 text-base font-semibold",
         "disabled:cursor-progress",
+        // The verdict is the one place the button overshoots (to 1.03, once).
+        state === "done" && "verdict-land",
         state === "done"
           ? "border-accent-strong bg-transparent text-foreground hover:bg-muted"
           : "border-accent-strong bg-accent-strong text-on-accent hover:opacity-90",

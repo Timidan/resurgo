@@ -1,5 +1,6 @@
 "use client";
 
+import { EASE_ENTER } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -10,7 +11,7 @@ const SPRING_DEFAULT = {
   duration: 0.25,
   type: "spring" as const,
 };
-const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+const EASE_OUT = EASE_ENTER;
 /**
  * A beat before auto-collapsing. Snapping shut the instant the trace finishes
  * makes it feel like the content was yanked away mid-read.

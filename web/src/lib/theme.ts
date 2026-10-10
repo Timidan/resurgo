@@ -22,8 +22,15 @@ export function currentTheme(): Theme {
   return media?.matches ? "dark" : "light";
 }
 
+let fadeTimer = 0;
+
 export function setTheme(t: Theme) {
-  document.documentElement.setAttribute("data-theme", t);
+  // Colours cross-fade for a moment instead of snapping (.theme-fade is off under reduced motion).
+  const root = document.documentElement;
+  root.classList.add("theme-fade");
+  window.clearTimeout(fadeTimer);
+  fadeTimer = window.setTimeout(() => root.classList.remove("theme-fade"), 300);
+  root.setAttribute("data-theme", t);
   try {
     localStorage.setItem(KEY, t);
   } catch {

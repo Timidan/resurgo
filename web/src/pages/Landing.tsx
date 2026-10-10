@@ -42,7 +42,7 @@ function CommandChip({ command }: { command: string }) {
             setTimeout(() => setCopied(false), 1800);
           }).catch(() => undefined);
         }}
-        className="shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        className="press shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted"
       >
         <span aria-live="polite">{copied ? "✓ Copied" : "Copy"}</span>
       </button>
@@ -67,7 +67,7 @@ function Hero({ data }: { data: LandingData }) {
         <div className="mt-9 flex flex-wrap items-center gap-3">
           <Link
             to="/runs"
-            className="inline-flex min-h-12 items-center rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
+            className="press inline-flex min-h-12 items-center rounded-lg border border-accent-strong bg-accent-strong px-6 text-base font-semibold text-on-accent hover:opacity-90"
           >
             See real runs
           </Link>

@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { BackgroundArt } from "@/components/art";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LIFT_EVENT } from "@/lib/beat";
 import { useTheme } from "@/lib/theme";
 import Landing from "@/pages/Landing";
 import RunView from "@/pages/RunView";
@@ -13,8 +14,33 @@ function ScrollToTop() {
   return null;
 }
 
+/** A route change: the new page rises in with the shared entrance easing. */
+function RouteStage({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <div key={pathname} className="route-enter">
+      {children}
+    </div>
+  );
+}
+
 function Header() {
   const theme = useTheme();
+  // The one flourish: the wordmark lifts when a replayed run verifies (see lib/beat.ts).
+  const [lifted, setLifted] = useState(false);
+  useEffect(() => {
+    let id = 0;
+    const on = () => {
+      setLifted(true);
+      window.clearTimeout(id);
+      id = window.setTimeout(() => setLifted(false), 560);
+    };
+    window.addEventListener(LIFT_EVENT, on);
+    return () => {
+      window.removeEventListener(LIFT_EVENT, on);
+      window.clearTimeout(id);
+    };
+  }, []);
   const link = ({ isActive }: { isActive: boolean }) =>
     `rounded px-1 py-1 text-sm font-semibold underline-offset-8 hover:text-foreground ${isActive ? "text-foreground underline" : "text-muted-foreground"}`;
   return (
@@ -27,7 +53,7 @@ function Header() {
             alt="resurgo"
             width={120}
             height={28}
-            className="h-7 w-auto"
+            className={`h-7 w-auto ${lifted ? "lift" : ""}`}
           />
         </Link>
         <nav aria-label="Main" className="flex items-center gap-4 sm:gap-6">
@@ -63,6 +89,7 @@ export default function App() {
       <BackgroundArt />
       <Header />
       <div id="main">
+        <RouteStage>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/runs" element={<Runs />} />
@@ -72,6 +99,7 @@ export default function App() {
             element={<main className="mx-auto max-w-3xl px-6 py-24"><h1 className="text-4xl font-semibold">Page not found</h1><p className="mt-4"><Link className="underline" to="/">Back to the start</Link></p></main>}
           />
         </Routes>
+        </RouteStage>
       </div>
       <Footer />
     </BrowserRouter>

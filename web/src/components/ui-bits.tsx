@@ -1,6 +1,6 @@
-import { motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import SiriOrb from "@/components/smoothui/siri-orb";
+import { useInView } from "@/lib/inview";
 import { statusMeta } from "@/lib/run";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,10 @@ export function StatusBadge({ status, className }: { status: string; className?:
   );
 }
 
-/** Scroll-driven reveal; plain content when the visitor prefers reduced motion. */
+/**
+ * Scroll reveal: the shared rise on a slight arc (Y: enter easing, X: arc easing). `delay` is the
+ * follow-through of a sibling, in seconds. Plain content under reduced motion (see .reveal in index.css).
+ */
 export function Reveal({
   children,
   className,
@@ -33,18 +36,12 @@ export function Reveal({
   delay?: number;
   x?: number;
 }) {
-  const reduce = useReducedMotion();
-  if (reduce) return <div className={className}>{children}</div>;
+  const { ref, on } = useInView<HTMLDivElement>();
+  const style = { "--rd": `${delay}s`, "--rx": `${x || -12}px` } as CSSProperties;
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 28, x }}
-      whileInView={{ opacity: 1, y: 0, x: 0 }}
-      viewport={{ once: true, margin: "0px 0px -12% 0px" }}
-      transition={{ duration: 0.6, delay, ease: [0.23, 1, 0.32, 1] }}
-    >
+    <div ref={ref} data-in={on} style={style} className={cn("reveal", className)}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 

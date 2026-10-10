@@ -203,7 +203,7 @@ const AITaskList = ({ className, label = "Plan", tasks }: AITaskListProps) => {
         .ai-task-draw { stroke-dashoffset: 0; }
         @media (prefers-reduced-motion: no-preference) {
           .ai-task-draw {
-            animation: ai-task-draw 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+            animation: ai-task-draw 200ms var(--ease-enter) both;
           }
         }
         @keyframes ai-task-draw {

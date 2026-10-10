@@ -1,4 +1,6 @@
+import { useEffect, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { useInView } from "@/lib/inview";
 import { cn } from "@/lib/utils";
 
 /** The lifted r. Inline so it takes the current text colour. */
@@ -20,6 +22,11 @@ const MARK_PATHS = ["M2 14V8a5 5 0 0 1 5-5h3v3H7a2 2 0 0 0-2 2v6Z", "M11 1h3v3h-
  */
 export function BackgroundArt() {
   const reduce = useReducedMotion();
+  const [drawn, setDrawn] = useState(!!reduce);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setDrawn(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], [0, -260]);
   const rise = useTransform(scrollYProgress, [0, 0.4], [0, -90]);
@@ -43,7 +50,9 @@ export function BackgroundArt() {
           WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 70% 20%, black, transparent 75%)",
         }}
       />
+      {/* Draws once, quickly, before the hero story's first window finishes rising; then only drifts. */}
       <motion.svg
+        data-in={drawn}
         viewBox="0 0 16 16"
         className="absolute -right-[12vw] top-[4vh] h-[110vh] w-auto text-accent opacity-[0.16]"
         style={reduce ? undefined : { y }}
@@ -52,12 +61,12 @@ export function BackgroundArt() {
         strokeWidth={0.1}
       >
         {MARK_PATHS.map((d, i) => (
-          <motion.path
+          <path
             key={d}
             d={d}
-            initial={reduce ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 2.4, delay: 0.3 + i * 0.5, ease: [0.23, 1, 0.32, 1] }}
+            pathLength={1}
+            className="draw"
+            style={{ "--rd": `${i * 0.3}s`, "--draw-ms": "1200ms" } as CSSProperties}
           />
         ))}
       </motion.svg>
@@ -77,9 +86,11 @@ export type IconName = keyof typeof ICONS;
 
 /** A 24px icon that draws itself as it scrolls into view. Static when motion is reduced. */
 export function AnimIcon({ name, className }: { name: IconName; className?: string }) {
-  const reduce = useReducedMotion();
+  const { ref, on } = useInView<SVGSVGElement>("0px");
   return (
     <svg
+      ref={ref}
+      data-in={on}
       viewBox="0 0 24 24"
       aria-hidden
       className={cn("size-6", className)}
@@ -89,20 +100,9 @@ export function AnimIcon({ name, className }: { name: IconName; className?: stri
       strokeLinecap="square"
       strokeLinejoin="miter"
     >
-      {ICONS[name].map((d, i) =>
-        reduce ? (
-          <path key={d} d={d} />
-        ) : (
-          <motion.path
-            key={d}
-            d={d}
-            initial={{ pathLength: 0 }}
-            whileInView={{ pathLength: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: i * 0.25, ease: "easeOut" }}
-          />
-        ),
-      )}
+      {ICONS[name].map((d, i) => (
+        <path key={d} d={d} pathLength={1} className="draw" style={{ "--rd": `${i * 0.12}s` } as CSSProperties} />
+      ))}
     </svg>
   );
 }
