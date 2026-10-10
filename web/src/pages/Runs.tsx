@@ -29,7 +29,36 @@ export default function Runs() {
               </span>
             ))}
           </p>
-          <Reveal>
+          <ul className="mt-6 grid grid-cols-1 gap-3 md:hidden" role="list" aria-label="All recorded runs, newest first">
+            {data.map((r) => {
+              const tag = runTag(r);
+              const body = (
+                <>
+                  <span className="break-words font-semibold">
+                    {r.repo ?? "In progress"}
+                    {r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
+                  </span>
+                  <StatusBadge status={r.status} className="self-start" />
+                  <span className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
+                    <span>{fmtDur(r.duration_s)}</span>
+                    {tag && <span>{tag}</span>}
+                    {r.started ? <span>{fmtWhen(r.started)}</span> : null}
+                  </span>
+                </>
+              );
+              const box = "flex flex-col gap-2 rounded-lg border border-border bg-panel p-4";
+              return (
+                <li key={r.id}>
+                  {r.repo ? (
+                    <Link to={`/runs/${r.id}`} className={`chip-t ${box} hover:border-accent-strong`}>{body}</Link>
+                  ) : (
+                    <div className={box}>{body}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <Reveal className="hidden md:block">
             <div className="mt-6 overflow-x-auto rounded-lg border border-border">
               <table className="w-full min-w-[64rem] border-collapse text-left text-sm">
                 <caption className="sr-only">All recorded runs, newest first</caption>
