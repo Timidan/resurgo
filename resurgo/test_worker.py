@@ -83,11 +83,11 @@ def test_once_writes_contract_status(tmp_path, monkeypatch):
     rejected = json.loads((queue / "status" / "404.json").read_text())
     assert (rejected["state"], rejected["reason"]) == ("rejected", "not an installation of Resurgo Agent")
     status = json.loads((queue / "status" / "999.json").read_text())
-    assert set(status) == {"installation_id", "account", "updated", "state", "reason", "repos"}
+    assert set(status) == {"installation_id", "account", "updated", "state", "reason", "queued_at", "repos"}
     assert (status["installation_id"], status["account"], status["state"]) == (999, "octo", "done")
     by = {(r["repo"], r["path"]): r for r in status["repos"]}
     assert all(set(r) == {"repo", "sha", "path", "state", "reason", "run_id", "result",
-                          "needs_approval", "pr"} for r in status["repos"])
+                          "needs_approval", "pr", "started"} for r in status["repos"])
     assert "octo/app" not in ran and by["octo/app", ""]["run_id"] == "old-app"      # reused
     assert by["octo/app", ""]["result"] == "runs_with_gaps" and by["octo/app", ""]["sha"] == SHA[:12]
     assert sorted(p for repo, p in by if repo == "octo/mono") == ["contracts", "web"]
@@ -95,3 +95,24 @@ def test_once_writes_contract_status(tmp_path, monkeypatch):
     assert by["octo/secret", ""]["state"] == by["octo/old", ""]["state"] == "skipped"
     assert by["octo/x4", ""]["state"] == "skipped" and "only 5" in by["octo/x4", ""]["reason"]
     assert all(r["pr"] is None for r in status["repos"])
+
+
+def test_waits_with_a_reason_while_a_sweep_runs(tmp_path, monkeypatch):
+    queue = tmp_path / "queue"
+    (queue / "requests").mkdir(parents=True)
+    (queue / "status").mkdir()
+    worker.save(queue, {"installation_id": 7, "account": "octo", "state": "checking", "reason": "",
+                        "queued_at": "2026-10-10T00:00:00+00:00", "repos": [worker.entry("octo/app", SHA)]})
+    sweeping = [True]
+    monkeypatch.setattr(worker, "RUNS", tmp_path / "runs")
+    monkeypatch.setattr(worker, "sweep_running", lambda: sweeping[0])
+    monkeypatch.setattr(worker, "run_one", lambda item, tags: {"run_id": "r1", "result": "runs"})
+
+    assert worker.step(queue) is False
+    waiting = json.loads((queue / "status" / "7.json").read_text())
+    assert waiting["reason"] == worker.WAIT_REASON and waiting["repos"][0]["started"] is None
+
+    sweeping[0] = False
+    assert worker.step(queue) is True
+    done = json.loads((queue / "status" / "7.json").read_text())
+    assert (done["state"], done["reason"]) == ("done", "") and done["repos"][0]["started"]
