@@ -33,11 +33,28 @@ Timidan (solo, with coding agents).
 - Bugs found on the way: a `docker exec -i` with no stdin hung forever on a missing file (the first rinne attempt ran 10 minutes before the harness killed it and left a container, which I removed); and the `--path` directory check used the wrong base, failing the first agent-arena run at clone (not a repo result; that run was discarded and redone).
 - Not verified: the neatlogs trace hierarchy (LLM and CHAIN spans under the WORKFLOW span) was not opened in the UI. The runs sent spans, but I did not check them.
 
+- Milestone 2b, every project type and the full proof bar. `resurgo/project.py` detects the type from the manifests, and the reason is recorded: Foundry (foundry.toml), Rust (Cargo.toml), desktop (an electron dependency in the root or any workspace member), monorepo (pnpm-workspace.yaml or `workspaces`), web app (a start or dev script, or a web framework dependency), otherwise library or CLI. The clone happens in a base container; if the type needs another image the run switches to `node:<major>-bookworm` (major from engines, .nvmrc, volta) or `rust:<version>-bookworm` (rust-toolchain, else `1`). Caps stay 2 CPU and 4 GB; time caps are 15, 10 and 25 minutes for Node, Foundry and Rust, applied to the whole loop and to the verifier. Foundry is a pinned release (v1.8.5) downloaded in a Node image, installed whenever the repo has a foundry.toml, with submodules.
+- Proof bar: web apps install, build if present, then start the server in the container, wait for a new port and GET `/` (2xx or 3xx, non-empty body, no framework error markers; `resurgo/probe.js`). Library, CLI and monorepo: install, build if present, test if there is a real test script. Foundry: `forge build`, `forge test`. Rust: `cargo build`, `cargo test`. Desktop: install and build, then `runs_with_gaps`. A missing test script is `runs_with_gaps`. `.env` is filled from `.env.example` with dummy values; if a step fails and names a secret-like variable from that file, the run stops as `runs_with_gaps: needs <NAME>` without asking the model. Final statuses: `runs`, `runs_with_gaps`, `broken` (with the last failing step, `needs_approval` flagged), `unsupported`, `model_limited`. The repair loop now covers any step except the toolchain, with the same budget and config-versus-code policy (foundry.toml, rust-toolchain and .env.example count as config; a failed step that times out keeps its partial output).
+- Real runs on the development set (Node only; no Foundry or Rust repo is in it, so those paths have never run for real):
+
+| Repo | Type | Status | Time | Model calls | What happened |
+| --- | --- | --- | --- | --- | --- |
+| buqiyuan/electron-vite-monorepo | desktop | runs_with_gaps | 533s | 1 | `postinstall` needed libnspr4; the model added an `.npmrc` fix; verifier passed install and build; gap: cannot start headless |
+| Timidan/rinne | monorepo | runs | 433s | 3 | Same pnpm 12 `allowBuilds` fix path as 2a; install, build and tests pass in the verifier |
+| Timidan/agent-arena `--path commentator` | web_app | broken (serve) | 708s | 2 | `.nvmrc` 20 fixes install and build as before; then `npm start` is a watcher bot that never listens and crashes on a missing sqlite directory; the model proposed a code fix, recorded as `needs_approval` |
+| chroxify/feedbase | monorepo | broken (build) | 980s, 971s on a second run | 0 | install passes (200-270s); `turbo run build` was still in the Next.js "linting and checking validity of types" step at the 15 minute cap |
+| Timidan/sentry-somnia | monorepo | broken (build) | 983s | 0 | install 54s; the build reached the dashboard's vite "transforming" step and hit the cap |
+
+- Not verified: whether the two build timeouts are the 2 CPU / 4 GB cap or something else (the cause was not isolated; the second feedbase run was made only to capture the output). The held-out set was not run. The neatlogs trace hierarchy is still unchecked in the UI.
+
 ## Demo
 Not available yet.
 
 ## Known limitations and next steps
-- Node only (pnpm, yarn, npm); no Foundry or Rust yet.
+- Foundry and Rust code paths are written and covered by a type-detection check only; no real Foundry or Rust run yet.
+- A repo with a `start` script is treated as a web app even when it is a worker with no HTTP port (agent-arena `commentator`); it ends as `broken` at serve.
+- Monorepos get the library proof bar (install, build, test); their apps are not started.
+- A rust-toolchain pin different from the image's toolchain cannot be installed (the toolchain directory is read-only for the non-root user).
 - The patch is cumulative: edits from failed attempts stay in it. Reverting them before the final diff is not done.
 - Reruns always start from install. Lockfile regeneration (an empty-content lockfile entry) and npm pins are implemented but have not been exercised on a real repo.
 - The 15-minute budget covers the fix loop, not the verifier. Many per-file `docker exec` calls on the remote host made runs slow before reads were batched.
