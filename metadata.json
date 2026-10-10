@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4K89KJP663MA5P0KQQ4NEZ2",
+  "strategy": "manual-commit",
+  "branch": "web",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "web/src/App.tsx",
+    "web/src/components/Logo.tsx",
+    "web/src/components/RepoChat.tsx",
+    "web/src/pages/Landing.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 17798,
+    "cache_read_tokens": 828529,
+    "output_tokens": 10713,
+    "api_call_count": 8
+  }
+}
