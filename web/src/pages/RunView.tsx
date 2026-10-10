@@ -19,6 +19,7 @@ import {
   fmtDur,
   fmtWhen,
   parsePatch,
+  runTag,
   statusMeta,
   stepOk,
   type ReplayEvent,
@@ -86,7 +87,11 @@ export default function RunView() {
       {error && (
         <p className="mt-10 text-lg" role="alert">
           <span aria-hidden className="font-mono">✗ </span>
-          {error === "Not found" ? "No such run." : `Could not load this run: ${error}`}
+          {error === "Not found" ? (
+            <>No run with this id. <Link to="/runs" className="underline underline-offset-4">See every run</Link></>
+          ) : (
+            "Unable to load this run. Reload the page to try again."
+          )}
         </p>
       )}
       {data && <RunBody key={data.summary.id} d={data} />}
@@ -179,13 +184,15 @@ function RunBody({ d }: { d: RunDetail }) {
     }
     if (!live()) return;
     setState("done");
-    if (s.verified && s.status !== "fix_awaiting_approval") lift(); // the lifted-r wordmark rises once the replay verifies clean
+    if (s.verified && s.status !== "fix_awaiting_approval" && s.status !== "fix_skipped_tests") lift(); // the lifted-r wordmark rises once the replay verifies clean
   }, [events, reduce, s.verified, s.status]);
 
   // Verified means the separate clean container ran steps and all of them passed (decided by the API).
   // A fix that is still awaiting approval passed there too, but is not a clean pass.
   const awaiting = s.status === "fix_awaiting_approval";
-  const verified = s.verified && !awaiting;
+  const skipped = s.status === "fix_skipped_tests";
+  const verified = s.verified && !awaiting && !skipped;
+  const tag = runTag(s);
   const doneLabel = verified ? `${meta.word} · verified clean` : meta.word;
   const approvals = (r.agent?.attempts ?? []).filter((a) => a.status === "needs_approval");
   const attempts = r.agent?.attempts ?? [];
@@ -208,6 +215,7 @@ function RunBody({ d }: { d: RunDetail }) {
             <span>{fmtDur(s.duration_s)} wall time</span>
             <span>{s.model_calls} model call{s.model_calls === 1 ? "" : "s"}</span>
             <span>fix: {fixLabel(s.fix_kind, s.needs_approval)}</span>
+            {tag && <span>{tag}</span>}
             <span>{fmtWhen(r.started)}</span>
           </p>
         </div>
@@ -221,6 +229,11 @@ function RunBody({ d }: { d: RunDetail }) {
           {awaiting && (
             <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
               The fix passed in a separate clean container. It changes code, so it waits for the owner&apos;s approval.
+            </p>
+          )}
+          {skipped && (
+            <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
+              This fix made the tests pass by skipping them. Resurgo now rejects fixes like this.
             </p>
           )}
           {verified && (
@@ -302,7 +315,7 @@ function RunBody({ d }: { d: RunDetail }) {
 
         <aside className="min-w-0 space-y-6">
           <div className="flex items-center gap-4">
-            <AgentOrb thinking={thinking} failed={s.status === "broken" || s.status === "fail"} size={64} />
+            <AgentOrb thinking={thinking} failed={s.status === "broken" || s.status === "fail" || skipped} size={64} />
             <div>
               <h2 className="text-xl font-semibold">The agent&apos;s plan</h2>
               <p className="text-sm text-muted-foreground">
@@ -350,7 +363,7 @@ function RunBody({ d }: { d: RunDetail }) {
                     <p className="mt-1 text-foreground">{a.rationale}</p>
                     <p className="mt-1 text-xs">
                       <span aria-hidden className="font-mono">{a.status === "needs_approval" ? "◐" : a.result === "passed" ? "✓" : "✗"} </span>
-                      Result: {a.status === "needs_approval" ? "needs approval, not applied" : a.result}
+                      Result: {a.status === "needs_approval" ? (awaiting ? "needs approval, tested only in the sandbox" : "needs approval, not applied") : a.result}
                       {a.recovered_from_invalid_json ? " · recovered from invalid JSON" : ""}
                     </p>
                   </li>
@@ -367,7 +380,9 @@ function RunBody({ d }: { d: RunDetail }) {
             <span aria-hidden className="font-mono">◐ </span>Needs your approval
           </h2>
           <p className="mb-4 text-muted-foreground">
-            Source-code changes are proposed, never applied on their own. These were not applied in this run.
+            {awaiting
+              ? "Applied only inside the sandbox to test it. It passed in a clean container and waits for your approval before anything reaches your repository."
+              : "Source-code changes are proposed, never applied on their own. These were not applied in this run."}
           </p>
           <div className="space-y-4">
             {approvals.map((a, i) => (
@@ -398,7 +413,7 @@ function RunBody({ d }: { d: RunDetail }) {
         ) : (
           <>
             <p className="mb-4 text-muted-foreground">
-              A second container, built only from the recipe and the fix, ran these steps from a fresh clone.{" "}
+              A second container cloned the same commit, applied only the fix and ran these steps.{" "}
               {r.verifier?.passed ? "Every step passed." : "At least one step failed."}
             </p>
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -424,6 +439,8 @@ function RunBody({ d }: { d: RunDetail }) {
           <dd className="break-all">{r.trace_id ?? <span className="text-muted-foreground">not recorded for this run</span>}</dd>
           <dt className="text-muted-foreground">Commit</dt><dd>{r.sha}</dd>
           <dt className="text-muted-foreground">Agent version</dt><dd>{r.agent_version ?? "—"}</dd>
+          <dt className="text-muted-foreground">Set</dt>
+          <dd>{s.set ? `${s.set}${s.sweep_id ? ` · ${s.sweep_id}` : ""}` : "not recorded for this run"}</dd>
           <dt className="text-muted-foreground">Image</dt><dd>{r.image ?? "—"}</dd>
         </dl>
       </section>

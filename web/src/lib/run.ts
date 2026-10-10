@@ -20,6 +20,8 @@ const STATUS: Record<string, StatusMeta> = {
     tone: "border border-dashed border-gaps bg-gaps-soft text-gaps",
     text: "text-gaps",
   },
+  // The patch only excluded tests. Styled like broken: it is not a repair.
+  fix_skipped_tests: { word: "Fix skipped tests · not a repair", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   broken: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   fail: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   // Only a record with no verifier steps at all lands here (see api/main.py).
@@ -53,12 +55,26 @@ export const fixLabel = (kind: string | null, needsApproval: boolean) =>
 
 export const stepOk = (s: Step) => s.exit_code === 0;
 
-/** Latest verified run that carries a fix; otherwise the latest run with a record. */
+/** A run that may be shown as an example: it has a record and its fix did not just skip tests. */
+export const isShowable = (r: RunSummary) => r.status !== "checking" && r.status !== "fix_skipped_tests" && !r.weakens_tests;
+
+/** Latest verified run, preferring a config fix, then any fix; otherwise the latest showable run. */
 export function pickFeatured(runs: RunSummary[]): RunSummary | null {
-  const real = runs.filter((r) => r.status !== "checking");
+  const real = runs.filter(isShowable);
   return (
-    real.find((r) => r.status === "runs" && r.fix_kind) ?? real.find((r) => r.status === "runs") ?? real[0] ?? null
+    real.find((r) => r.status === "runs" && r.fix_kind === "config") ??
+    real.find((r) => r.status === "runs" && r.fix_kind) ??
+    real.find((r) => r.status === "runs") ??
+    real[0] ??
+    null
   );
+}
+
+/** "Held-out set, agent v1": which evaluation set and agent produced a record, as far as it says. */
+export function runTag(r: Pick<RunSummary, "set" | "agent_version">): string | null {
+  const set = r.set === "heldout" ? "Held-out set" : r.set === "dev" ? "Development repos" : null;
+  const agent = r.agent_version ? `agent ${r.agent_version}` : null;
+  return [set, agent].filter(Boolean).join(", ") || null;
 }
 
 /** Latest run per repo (the list is newest first). */

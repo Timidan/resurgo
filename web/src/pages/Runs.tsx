@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Eyebrow, Reveal, StatusBadge } from "@/components/ui-bits";
 import { useRuns } from "@/lib/api";
-import { fixLabel, fmtDur, fmtWhen, statusMeta } from "@/lib/run";
+import { fixLabel, fmtDur, fmtWhen, runTag, statusMeta } from "@/lib/run";
 
 export default function Runs() {
   const { data, error, loading } = useRuns();
@@ -15,7 +15,7 @@ export default function Runs() {
       </p>
 
       {loading && <p className="mt-10 text-muted-foreground" role="status">◌ Loading runs…</p>}
-      {error && <p className="mt-10" role="alert"><span aria-hidden className="font-mono">✗ </span>Could not load runs: {error}</p>}
+      {error && <p className="mt-10" role="alert"><span aria-hidden className="font-mono">✗ </span>Unable to load the runs. Reload the page to try again.</p>}
 
       {data && data.length === 0 && <p className="mt-10 text-muted-foreground">No runs have been recorded yet.</p>}
 
@@ -31,11 +31,11 @@ export default function Runs() {
           </p>
           <Reveal>
             <div className="mt-6 overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
+              <table className="w-full min-w-[64rem] border-collapse text-left text-sm">
                 <caption className="sr-only">All recorded runs, newest first</caption>
                 <thead className="bg-card text-muted-foreground">
                   <tr>
-                    {["Status", "Repository", "Commit", "Type", "Duration", "Model calls", "Fix", "Started"].map((h) => (
+                    {["Status", "Repository", "Set and agent", "Commit", "Type", "Duration", "Model calls", "Fix", "Started"].map((h) => (
                       <th key={h} scope="col" className="px-4 py-3 font-semibold">{h}</th>
                     ))}
                   </tr>
@@ -54,6 +54,7 @@ export default function Runs() {
                           <span className="text-muted-foreground">In progress · <span className="font-mono">{r.id}</span></span>
                         )}
                       </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{runTag(r) ?? "—"}</td>
                       <td className="px-4 py-3 font-mono text-muted-foreground">{r.sha ?? "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{r.type ?? "—"}</td>
                       <td className="px-4 py-3 font-mono tabular-nums">{fmtDur(r.duration_s)}</td>

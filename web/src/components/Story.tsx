@@ -76,7 +76,7 @@ export function Story({
   const repoMeta = f.repoState === "final" ? meta : f.repoState === "broken" ? broken : checking;
   const repoWord = f.repoState === "broken" ? "Broken from a fresh clone" : repoMeta.word;
   const awaiting = s.status === "fix_awaiting_approval";
-  const verified = s.verified && !awaiting; // a clean pass; an awaiting fix is not one
+  const verified = s.verified && !awaiting && s.status !== "fix_skipped_tests"; // a clean pass; neither is an awaiting or a test-skipping fix
   const dim = (i: number) => f.focus >= 0 && f.focus !== i;
 
   // While this story plays its primary beat, secondary actions on the page hold still.
@@ -208,7 +208,7 @@ export function Story({
           </div>
         </Win>
 
-        <Win title="clean container · rebuilt from the recipe" entered={f.entered[3]} dim={dim(3)}>
+        <Win title="clean container · same commit, only the fix" entered={f.entered[3]} dim={dim(3)}>
           <div className="p-4">
             {f.tiles.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -253,7 +253,7 @@ export function Story({
       </div>
       <p className="text-right text-sm">
         <Link to={`/runs/${s.id}`} className="text-muted-foreground underline underline-offset-4 hover:text-foreground">
-          Open this run
+          Open the run
         </Link>
       </p>
     </div>
