@@ -13,7 +13,7 @@ const TABS: { id: TabKey; label: string; icon: IconName; blurb: string }[] = [
   { id: "check", label: "Check", icon: "check", blurb: "Clone fresh, then install, build, test and start, stopping at the first failure." },
   { id: "diagnose", label: "Diagnose", icon: "diagnose", blurb: "Deterministic rules first. The model only runs when something broke." },
   { id: "repair", label: "Repair", icon: "repair", blurb: "The smallest change that could work, written as a patch." },
-  { id: "prove", label: "Prove", icon: "prove", blurb: "A separate container rebuilds from the recipe. Only that counts." },
+  { id: "prove", label: "Prove", icon: "prove", blurb: "A second container clones the same commit, applies only the fix and reruns every step. Only that counts." },
 ];
 
 type Line = { text: string; tone?: "bad" | "added" | "muted" | "good" };
@@ -214,7 +214,7 @@ export function SolutionTabs({ detail }: { detail: RunDetail }) {
           </dl>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          {reduce ? "" : manual ? "" : "Advances on its own. Hover or pick a tab to hold it. "}
+          {reduce ? "" : manual ? "" : "Advances on its own. Select a tab to hold it. "}
           Excerpts and numbers are read from the recorded run of {detail.result.repo}.
         </p>
       </div>

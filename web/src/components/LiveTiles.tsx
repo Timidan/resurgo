@@ -40,7 +40,7 @@ export function LiveTiles({ runs }: { runs: RunSummary[] }) {
           <p className="text-lg font-semibold">
             Run so far on {n} public repositor{n === 1 ? "y" : "ies"}
           </p>
-          <p className="text-xs text-muted-foreground">Statuses are the latest recorded run. Names are plain text. Not affiliated.</p>
+          <p className="text-xs text-muted-foreground">Each tile shows the repository&apos;s latest recorded run.</p>
         </div>
         <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
           {shown.map((r, i) => {

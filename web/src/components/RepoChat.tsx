@@ -68,7 +68,7 @@ function Reply({ asked, latest, onPick }: { asked: Asked; latest: RunSummary[]; 
       )}
       {match && done && read && (
         <p className="settle text-sm">
-          <Link to={`/runs/${match.id}`} className="text-accent-strong underline underline-offset-4">Open the full run record</Link>
+          <Link to={`/runs/${match.id}`} className="text-accent-strong underline underline-offset-4">Open the run</Link>
         </p>
       )}
     </div>

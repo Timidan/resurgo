@@ -10,10 +10,10 @@ import { SolutionTabs } from "@/components/SolutionTabs";
 import { Story } from "@/components/Story";
 import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, Mark, Reveal, StatusBadge } from "@/components/ui-bits";
-import type { RunDetail, Step } from "@/lib/api";
-import { fixLabel, fmtDur, parsePatch, statusMeta, stepOk } from "@/lib/run";
+import type { RunDetail, RunSummary, Step } from "@/lib/api";
+import { fixLabel, fmtDur, isShowable, parsePatch, statusMeta, stepOk } from "@/lib/run";
 import { cn, INSTALL_URL } from "@/lib/utils";
-import { useLandingData, type LandingData } from "./landing-data";
+import { useLandingData, type LandingData, type StatGroup } from "./landing-data";
 
 const LABEL = "font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground";
 
@@ -86,11 +86,12 @@ function Hero({ data }: { data: LandingData }) {
           </Link>
         </div>
         <p className="mt-4 max-w-xl text-sm text-muted-foreground">
-          Pick the repos. Resurgo rebuilds each from a fresh clone and opens a pull request only for a fix that passes in a clean container.
+          Pick the repos. Resurgo rebuilds each from a fresh clone and opens a pull request only for a fix that passes in a clean container.{" "}
+          <Link to="/data" className="underline underline-offset-4 hover:text-foreground">What Resurgo stores</Link>
         </p>
         {cmd && (
           <div className="mt-8 max-w-xl">
-            <p className="mb-2 text-sm text-muted-foreground">or run it yourself (the run on the right):</p>
+            <p className="mb-2 text-sm text-muted-foreground">or run it yourself:</p>
             <CommandChip command={cmd} />
           </div>
         )}
@@ -154,7 +155,7 @@ function Steps({ data }: { data: LandingData }) {
     {
       icon: "prove" as const,
       title: "Proof in a clean container",
-      body: "A second container, built from the recipe alone, has to pass. The agent that wrote the fix cannot write to it.",
+      body: "A second container clones the same commit, applies only the fix and reruns every step. The agent that wrote the fix can&apos;t touch it.",
       rows: stepRows(proof, "p"),
     },
   ].filter((i) => i.rows.length > 0);
@@ -185,8 +186,8 @@ function Projects({ data }: { data: LandingData }) {
     <section className="border-y border-border bg-panel/50">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <Reveal className="min-w-0">
-          <Eyebrow>Your projects</Eyebrow>
-          <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">One state per project, in words.</h2>
+          <Eyebrow>Checked repositories</Eyebrow>
+          <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">One status per repository, in plain words.</h2>
           <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-panel" role="list">
             {data.latest.map((r) => (
               <li key={r.id}>
@@ -227,7 +228,9 @@ function Projects({ data }: { data: LandingData }) {
 /* 5. Open a run ------------------------------------------------------------ */
 function OpenARun({ data }: { data: LandingData }) {
   // Everything here comes from the /api/runs summaries: no per-run fetch.
-  const cards = [...data.latest].sort((a, b) => Number(!!b.patch_preview) - Number(!!a.patch_preview)).slice(0, 3);
+  // Fixes that only skipped tests are never shown here. Clean config fixes come first, then other fixes.
+  const rank = (r: RunSummary) => (r.status === "runs" && r.fix_kind === "config" ? 0 : r.patch_preview ? 1 : 2);
+  const cards = data.latest.filter(isShowable).sort((a, b) => rank(a) - rank(b)).slice(0, 3);
   if (!cards.length) return null;
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
@@ -259,7 +262,7 @@ function OpenARun({ data }: { data: LandingData }) {
                     {r.fix_kind ? "Open the run to read the patch." : "No fix was recorded for this run."}
                   </p>
                 )}
-                <p className="mt-5 text-sm font-semibold underline-offset-4 group-hover:underline">Open the run →</p>
+                <p className="mt-5 text-sm font-semibold underline-offset-4 group-hover:underline">Open the run <span aria-hidden>→</span></p>
               </Link>
             </Reveal>
           );
@@ -277,7 +280,7 @@ function Problem({ data }: { data: LandingData }) {
       <div className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
         <Reveal>
           <h2 className="max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">Projects rot while you&apos;re not looking.</h2>
-          <p className="mt-5 max-w-2xl text-lg text-muted-foreground">Nothing in the repository changed. These are the real causes we recorded.</p>
+          <p className="mt-5 max-w-2xl text-lg text-muted-foreground">Nothing in the repository changed. These are the real causes Resurgo recorded.</p>
         </Reveal>
         <ol className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-3" role="list">
           {data.problems.map((p, i) => (
@@ -301,11 +304,41 @@ function Problem({ data }: { data: LandingData }) {
   );
 }
 
+function StatBlock({ g, lead }: { g: StatGroup; lead: string | null }) {
+  const stats = [
+    { k: "Repos checked", v: String(g.repos) },
+    { k: "Verified in a clean container", v: String(g.verified) },
+    ...(g.medianVerifiedS != null ? [{ k: "Median wall time of a verified fix", v: fmtDur(g.medianVerifiedS) }] : []),
+  ];
+  return (
+    <div className="min-w-0">
+      <h3 className="mb-3 text-lg font-semibold">
+        {lead ? <span className="mr-2 font-mono text-sm uppercase tracking-[0.12em] text-muted-foreground">{lead}</span> : null}
+        {g.label}: {g.repos} repos
+      </h3>
+      <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
+        {stats.map((s) => (
+          <div key={s.k} className="bg-canvas p-6">
+            <dd className="font-mono text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl">{s.v}</dd>
+            <dt className="mt-2 text-muted-foreground">{s.k}</dt>
+          </div>
+        ))}
+      </dl>
+      {g.skipped > 0 && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {g.skipped} {g.skipped === 1 ? "fix" : "fixes"} only skipped tests and {g.skipped === 1 ? "is" : "are"} not counted as verified.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* 7. The solution: tabs ---------------------------------------------------- */
 function Solution({ data }: { data: LandingData }) {
   const f = data.featured;
   if (!f) return null;
   const st = data.stats;
+  const compare = st.length > 1 && st.every((g) => g.set === "heldout");
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
       <Reveal>
@@ -314,22 +347,16 @@ function Solution({ data }: { data: LandingData }) {
       </Reveal>
       <SolutionTabs detail={f} />
 
-      {st && (
+      {st.length > 0 && (
         <Reveal className="mt-16">
-          <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
-            {[
-              { k: "Runs recorded", v: String(st.recorded) },
-              { k: "Verified in a clean container", v: String(st.verified) },
-              ...(st.medianVerifiedS != null ? [{ k: "Median wall time of a verified fix", v: fmtDur(st.medianVerifiedS) }] : []),
-            ].map((s) => (
-              <div key={s.k} className="bg-canvas p-6">
-                <dd className="font-mono text-5xl font-semibold tabular-nums tracking-tight">{s.v}</dd>
-                <dt className="mt-2 text-muted-foreground">{s.k}</dt>
-              </div>
+          {/* Two agent versions of the held-out set: the older is the before, the newest the after. Otherwise each block stands alone. */}
+          <div className={cn("grid gap-8", st.length > 1 && "lg:grid-cols-2")}>
+            {(compare ? [st[0], st[st.length - 1]] : st).map((g, i) => (
+              <StatBlock key={g.key} g={g} lead={compare ? (i === 0 ? "Before" : "After") : null} />
             ))}
-          </dl>
+          </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Counted from the recorded development-repo runs above. These are not the held-out evaluation.
+            Counted from the run records only. Each repo counts once, by its latest run in that set and agent version.
           </p>
         </Reveal>
       )}
@@ -364,7 +391,7 @@ function Artifacts({ data }: { data: LandingData }) {
         <Reveal>
           <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Everything it does is a file you can read.</h2>
           <p className="mt-4 text-muted-foreground">
-            Agents can read it too: <a href="/index.md" className="font-semibold text-accent-strong underline underline-offset-4">the Agent view</a> describes the API and how runs are proved.
+            Agents can read it too: <a href="/index.md" className="font-semibold text-accent-strong underline underline-offset-4">the Agent view</a> (Markdown for AI agents) describes the API and how runs are proved.
           </p>
         </Reveal>
         <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -419,13 +446,13 @@ function Closing({ data }: { data: LandingData }) {
     const m = statusMeta(s);
     return m.text === "text-runs" ? "bg-runs text-canvas" : m.text === "text-broken" ? "bg-broken text-canvas" : "bg-gaps text-canvas";
   };
-  const steps = ["Install the app", "Pick repos", "Fresh-clone check", "Pull request for a verified fix"];
+  const steps = ["Install the app", "Pick the repos", "Resurgo checks each from a fresh clone", "A pull request for each verified fix"];
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">
       <Reveal>
         <h2 className="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-7xl">Install it. Pick the repos.</h2>
         <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-          Install the Resurgo Agent GitHub App on the repositories you pick. It opens a pull request only for a fix that passed in a clean container. A change to your code waits for your approval.
+          Install the Resurgo Agent GitHub App on the repos you pick. It opens a pull request only for a fix that passed in a clean container. A change to your code waits for your approval.
         </p>
       </Reveal>
 
@@ -449,7 +476,7 @@ function Closing({ data }: { data: LandingData }) {
             ))}
           </ol>
           <p className="mt-3 flex flex-wrap gap-x-5 font-mono text-xs text-muted-foreground">
-            <span>✓ Runs</span><span>◐ Runs with gaps or fixed, unverified</span><span>◆ Fix verified, awaiting approval</span><span>✗ Broken</span>
+            <span>✓ Runs</span><span>◐ Runs with gaps</span><span>◐ Fixed, unverified</span><span>◆ Fix verified · awaiting approval</span><span>✗ Fix skipped tests</span><span>✗ Broken</span>
           </p>
         </Reveal>
       )}
@@ -464,9 +491,6 @@ function Closing({ data }: { data: LandingData }) {
             </li>
           ))}
         </ol>
-        <p className="mt-4 text-muted-foreground">
-          Planned pricing: about $2 per verified fix, and checks free for up to 10 repositories. That is an intended charge, not a measured one.
-        </p>
       </Reveal>
     </section>
   );
