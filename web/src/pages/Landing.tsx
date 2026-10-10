@@ -7,7 +7,7 @@ import AIReasoning from "@/components/smoothui/ai-reasoning";
 import { LiveTiles } from "@/components/LiveTiles";
 import { RepoChat } from "@/components/RepoChat";
 import { SolutionTabs } from "@/components/SolutionTabs";
-import { Story } from "@/components/Story";
+import { Story, StorySkeleton } from "@/components/Story";
 import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, Mark, Reveal, StatusBadge } from "@/components/ui-bits";
 import type { RunDetail, RunSummary, Step } from "@/lib/api";
@@ -116,8 +116,8 @@ function Hero({ data }: { data: LandingData }) {
       <div className="min-w-0 lg:pt-4">
         {f ? (
           <Story detail={f} replayOnHover label={`A real run of ${f.result.repo}, replayed`} />
-        ) : data.loading ? (
-          <p className="text-muted-foreground" role="status">◌ Loading a recorded run…</p>
+        ) : data.loading || data.featuredSummary ? (
+          <StorySkeleton tiles={data.featuredSummary?.verifier_steps?.length} />
         ) : null}
       </div>
     </section>
