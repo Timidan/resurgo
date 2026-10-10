@@ -10,7 +10,8 @@ export function StatusBadge({ status, className }: { status: string; className?:
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-0.5 text-sm font-semibold text-foreground",
+        "inline-flex items-center gap-1.5 rounded-full border border-transparent px-2.5 py-0.5 text-sm font-semibold",
+        m.tone,
         className,
       )}
     >
@@ -55,11 +56,12 @@ export function AgentOrb({ thinking, failed, size = 56 }: { thinking: boolean; f
         size={`${size}px`}
         state={thinking ? "thinking" : failed ? "error" : "done"}
         colors={{
-          bg: "oklch(24% 0.02 250)",
-          c1: "oklch(82% 0.13 80)",
-          c2: "oklch(70% 0.03 250)",
-          c3: "oklch(42% 0.03 250)",
-          c4: "oklch(94% 0.01 250)",
+          // Theme tokens, so the orb is a light object in light mode and a dark one in dark mode.
+          bg: "var(--muted)",
+          c1: "var(--accent)",
+          c2: "var(--evidence)",
+          c3: "var(--accent-strong)",
+          c4: "var(--panel)",
         }}
       />
     </span>
@@ -72,5 +74,5 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 
 /** A word in the amber highlighter: evidence only. */
 export function Mark({ children }: { children: ReactNode }) {
-  return <mark className="rounded-[0.15em] bg-highlight px-[0.12em] text-highlight-foreground">{children}</mark>;
+  return <mark className="rounded-[0.15em] bg-evidence px-[0.12em] text-on-evidence">{children}</mark>;
 }

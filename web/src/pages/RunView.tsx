@@ -331,7 +331,7 @@ function RunBody({ d }: { d: RunDetail }) {
                     <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
                       Proposed contents of {f.path}
                     </summary>
-                    <pre className="mt-2 max-h-80 overflow-auto rounded bg-[#0b0f12] p-3 font-mono text-xs">{f.content}</pre>
+                    <pre className="mt-2 max-h-80 overflow-auto rounded bg-terminal p-3 font-mono text-xs text-terminal-ink">{f.content}</pre>
                   </details>
                 ))}
               </div>

@@ -28,7 +28,7 @@ const stepRows = (steps: Step[], prefix: string): TermRow[] =>
 function CommandChip({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex max-w-full items-center gap-2 rounded-lg border border-border bg-[#0b0f12] py-1.5 pl-4 pr-1.5 font-mono text-sm">
+    <div className="flex max-w-full items-center gap-2 rounded-lg border border-border bg-terminal py-1.5 pl-4 pr-1.5 font-mono text-sm text-terminal-ink">
       <span aria-hidden className="text-muted-foreground">$</span>
       <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-1">{command}</code>
       <button
@@ -39,7 +39,7 @@ function CommandChip({ command }: { command: string }) {
             setTimeout(() => setCopied(false), 1800);
           }).catch(() => undefined);
         }}
-        className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-semibold hover:bg-accent"
+        className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
       >
         <span aria-live="polite">{copied ? "✓ Copied" : "Copy"}</span>
       </button>
@@ -49,7 +49,7 @@ function CommandChip({ command }: { command: string }) {
 
 function Window({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <div className={cn("overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_60px_-30px_rgb(0_0_0/0.8)]", className)}>
+    <div className={cn("overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_60px_-30px_color-mix(in_srgb,var(--ink)_40%,transparent)]", className)}>
       <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
         <span aria-hidden className="inline-block size-2 rounded-[2px] bg-muted-foreground" />
         <span className="font-mono">{title}</span>
@@ -301,7 +301,7 @@ function OpenARun({ data }: { data: LandingData }) {
                   {fixLabel(d.summary.fix_kind, d.summary.needs_approval)} fix · {fmtDur(d.summary.duration_s)} · {d.summary.model_calls} model call{d.summary.model_calls === 1 ? "" : "s"}
                 </p>
                 {file ? (
-                  <pre className="mt-5 flex-1 overflow-hidden rounded-md bg-[#0b0f12] p-3 font-mono text-xs leading-relaxed">
+                  <pre className="mt-5 flex-1 overflow-hidden rounded-md bg-terminal p-3 font-mono text-xs leading-relaxed text-terminal-ink">
                     <span className="text-muted-foreground">{file.title}</span>
                     {file.lines.slice(0, 7).map((l, j) => (
                       <span key={j} className={cn("block whitespace-pre", l.kind === "added" && "bg-highlight text-highlight-foreground")}>
@@ -485,7 +485,7 @@ function Artifacts({ data }: { data: LandingData }) {
               <div className="flex h-full flex-col rounded-xl border border-border bg-background p-5">
                 <h3 className="text-xl font-semibold">{c.title}</h3>
                 <p className="mt-1 text-muted-foreground">{c.body}</p>
-                <pre className="mt-4 max-h-64 flex-1 overflow-auto rounded-md bg-[#0b0f12] p-3 font-mono text-xs leading-relaxed" tabIndex={0}>
+                <pre className="mt-4 max-h-64 flex-1 overflow-auto rounded-md bg-terminal p-3 font-mono text-xs leading-relaxed text-terminal-ink" tabIndex={0}>
                   {c.code}
                 </pre>
               </div>
@@ -514,7 +514,7 @@ function Toolchains() {
 function Closing({ data }: { data: LandingData }) {
   const history = [...data.runs].filter((r) => r.status !== "checking").reverse();
   const tone = (s: string) =>
-    s === "runs" ? "bg-[#5cd8ac] text-[#101417]" : s === "broken" || s === "fail" ? "bg-[#ff8c77] text-[#101417]" : "bg-[#a8b3bd] text-[#101417]";
+    s === "runs" ? "bg-runs text-canvas" : s === "broken" || s === "fail" ? "bg-broken text-canvas" : "bg-gaps text-canvas";
   const steps = ["Install the app", "Pick repos", "First check", "Weekly re-checks"];
   return (
     <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6">

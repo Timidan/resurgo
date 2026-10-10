@@ -45,9 +45,9 @@ export function Terminal({
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   return (
-    <div className={cn("overflow-hidden rounded-lg border border-border bg-[#0b0f12]", className)}>
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2 font-mono text-xs text-muted-foreground">
-        <span aria-hidden className="inline-block size-2 rounded-[2px] bg-highlight" />
+    <div className={cn("overflow-hidden rounded-lg border border-border bg-terminal text-terminal-ink", className)}>
+      <div className="flex items-center gap-2 border-b border-border bg-panel px-3 py-2 font-mono text-xs text-muted-foreground">
+        <span aria-hidden className="inline-block size-2 rounded-[2px] bg-evidence" />
         <span className="truncate">{title}</span>
       </div>
       <ol className="m-0 list-none p-0 font-mono text-[13px] leading-relaxed" role="list">

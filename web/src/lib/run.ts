@@ -2,19 +2,25 @@ import type { AITask } from "@/components/smoothui/ai-task-list";
 import type { AIDiffLine } from "@/components/smoothui/ai-diff";
 import type { ModelCall, RunResult, RunSummary, Step } from "./api";
 
-export type StatusMeta = { word: string; glyph: string };
+export type StatusMeta = { word: string; glyph: string; tone: string; text: string };
 
 // Every state is a word plus a glyph; colour is never the only signal.
+const T_RUNS = "bg-runs-soft text-runs";
+const T_GAPS = "bg-gaps-soft text-gaps";
+const T_BROKEN = "bg-broken-soft text-broken";
+const T_CHECK = "bg-checking-soft text-checking";
 const STATUS: Record<string, StatusMeta> = {
-  runs: { word: "Runs", glyph: "✓" },
-  runs_with_gaps: { word: "Runs with gaps", glyph: "◐" },
-  broken: { word: "Broken", glyph: "✗" },
-  fail: { word: "Broken", glyph: "✗" },
-  fixed: { word: "Fixed, unverified", glyph: "◐" },
-  checking: { word: "Checking", glyph: "◌" },
+  runs: { word: "Runs", glyph: "✓", tone: T_RUNS, text: "text-runs" },
+  runs_with_gaps: { word: "Runs with gaps", glyph: "◐", tone: T_GAPS, text: "text-gaps" },
+  broken: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
+  fail: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
+  // Only a record with no verifier steps at all lands here (see api/main.py).
+  fixed: { word: "Fixed, unverified", glyph: "◐", tone: T_GAPS, text: "text-gaps" },
+  checking: { word: "Checking", glyph: "◌", tone: T_CHECK, text: "text-checking" },
 };
 
-export const statusMeta = (status: string): StatusMeta => STATUS[status] ?? { word: "Unknown", glyph: "?" };
+export const statusMeta = (status: string): StatusMeta =>
+  STATUS[status] ?? { word: "Unknown", glyph: "?", tone: "bg-muted text-secondary", text: "text-secondary" };
 
 export function fmtDur(s: number | null | undefined): string {
   if (s == null) return "—";

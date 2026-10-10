@@ -4,54 +4,97 @@
 @import "@fontsource/source-code-pro/400.css";
 @import "@fontsource/source-code-pro/600.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-theme="dark"] *));
 
-/* Resurgo brand tokens (web/public/brand/README.md). Dark is the only theme. */
+/*
+ * Resurgo brand: Daylight lab (docs/reference/tokens.css, verbatim).
+ * Light by default; dark via [data-theme="dark"] or the system preference
+ * unless the visitor has picked light.
+ */
 :root {
-  --background: #101417;
-  --foreground: #f5f7fa;
-  --card: #191f25;
-  --card-foreground: #f5f7fa;
-  --popover: #191f25;
-  --popover-foreground: #f5f7fa;
-  --primary: #f5f7fa;
-  --primary-foreground: #101417;
-  --secondary: #191f25;
-  --secondary-foreground: #f5f7fa;
-  --muted: #191f25;
-  --muted-foreground: #a8b3bd;
-  --accent: #232b33;
-  --accent-foreground: #f5f7fa;
-  --destructive: #ff8c77;
-  --border: #35414c;
-  --input: #35414c;
-  --ring: #f5f7fa;
-  --highlight: #f3bc66;
-  --highlight-foreground: #17212b;
+  --canvas: #F3F6FA; --panel: #FFFFFF; --muted: #EAEFF5;
+  --ink: #0F1720; --ink-2: #2A3441; --secondary: #55606E;
+  --hairline: #DCE3EC; --control: #C6D0DC;
+  --accent: #2F6BFF;          /* art, focus rings, large accents */
+  --accent-strong: #2459E8;   /* buttons with white text (5.7:1), links */
+  --on-accent: #FFFFFF;
+  --evidence: #E6FB63; --on-evidence: #0F1720;   /* highlighter for fixes and proof */
+  --runs: #127A4A;  --runs-soft: #E2F3EA;
+  --gaps: #8A6400;  --gaps-soft: #FBF1D2;
+  --broken: #BE3A2E; --broken-soft: #FBE7E3;
+  --checking: #2459E8; --checking-soft: #E7EEFF;
+  --terminal: #FFFFFF; --terminal-ink: #0F1720;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
+  --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
+  --hairline: #263244; --control: #33415A;
+  --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+  --evidence: #D9F24A; --on-evidence: #0F1720;
+  --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+  --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
+  --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
+  --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+  --terminal: #121A27; --terminal-ink: #EEF2F7;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0E1420; --panel: #151D2B; --muted: #1C2635;
+    --ink: #EEF2F7; --ink-2: #CDD5E0; --secondary: #9AA6B5;
+    --hairline: #263244; --control: #33415A;
+    --accent: #6E98FF; --accent-strong: #6E98FF; --on-accent: #0E1420;
+    --evidence: #D9F24A; --on-evidence: #0F1720;
+    --runs: #4FD08C;  --runs-soft: rgba(79,208,140,.14);
+    --gaps: #F2CC60;  --gaps-soft: rgba(242,204,96,.14);
+    --broken: #FF8A78; --broken-soft: rgba(255,138,120,.14);
+    --checking: #8AAEFF; --checking-soft: rgba(138,174,255,.14);
+    --terminal: #121A27; --terminal-ink: #EEF2F7;
+    color-scheme: dark;
+  }
+}
+
+:root {
   --radius: 0.5rem;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+  /* Brand names. */
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
   --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-secondary: var(--secondary);
+  --color-hairline: var(--hairline);
+  --color-control: var(--control);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-highlight: var(--highlight);
-  --color-highlight-foreground: var(--highlight-foreground);
+  --color-accent-strong: var(--accent-strong);
+  --color-on-accent: var(--on-accent);
+  --color-evidence: var(--evidence);
+  --color-on-evidence: var(--on-evidence);
+  --color-runs: var(--runs);
+  --color-runs-soft: var(--runs-soft);
+  --color-gaps: var(--gaps);
+  --color-gaps-soft: var(--gaps-soft);
+  --color-broken: var(--broken);
+  --color-broken-soft: var(--broken-soft);
+  --color-checking: var(--checking);
+  --color-checking-soft: var(--checking-soft);
+  --color-terminal: var(--terminal);
+  --color-terminal-ink: var(--terminal-ink);
+  /* Names the shadcn and SmoothUI components were written against. */
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--ink);
+  --color-muted-foreground: var(--secondary);
+  --color-border: var(--hairline);
+  --color-ring: var(--accent);
+  --color-destructive: var(--broken);
+  --color-highlight: var(--evidence);
+  --color-highlight-foreground: var(--on-evidence);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -60,31 +103,30 @@
 }
 
 html {
-  color-scheme: dark;
   scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 * {
-  border-color: var(--border);
+  border-color: var(--hairline);
 }
 
 :focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 ::selection {
-  background: var(--highlight);
-  color: var(--highlight-foreground);
+  background: var(--evidence);
+  color: var(--on-evidence);
 }
 
 /* The orb holds still unless the model is thinking. */
@@ -93,8 +135,23 @@ body {
   animation-play-state: paused !important;
 }
 
+/* Blinking text cursor for streamed text. */
+.stream-cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.18em;
+  background: currentColor;
+  animation: stream-blink 1s steps(1) infinite;
+}
+@keyframes stream-blink {
+  50% { opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .stream-cursor { animation: none; }
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;

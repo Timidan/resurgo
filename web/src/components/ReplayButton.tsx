@@ -37,9 +37,9 @@ export function ActionButton({
         "grid min-h-12 cursor-pointer place-items-center rounded-lg border px-6 text-base font-semibold transition-colors duration-300",
         "disabled:cursor-progress",
         state === "done"
-          ? "border-foreground bg-transparent text-foreground hover:bg-accent"
-          : "border-foreground bg-foreground text-background hover:bg-foreground/90",
-        state === "loading" && "bg-accent text-foreground border-border",
+          ? "border-accent-strong bg-transparent text-foreground hover:bg-muted"
+          : "border-accent-strong bg-accent-strong text-on-accent hover:opacity-90",
+        state === "loading" && "border-border bg-muted text-foreground",
         className,
       )}
     >

@@ -13,8 +13,8 @@ const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const LINE_STAGGER = 0.02;
 const WIPE_DURATION = 0.28;
 const FLASH_DURATION = 0.35;
-const SUCCESS_TINT = "oklch(72% 0.17 150 / 0.14)";
-const DANGER_TINT = "oklch(63% 0.21 25 / 0.12)";
+const SUCCESS_TINT = "var(--runs-soft)";
+const DANGER_TINT = "var(--broken-soft)";
 
 export type AIDiffLineKind = "added" | "removed" | "context";
 
@@ -83,7 +83,7 @@ const AIDiff = ({
           ? {
               backgroundColor: [
                 decision === "accepted" ? SUCCESS_TINT : DANGER_TINT,
-                "rgb(0 0 0 / 0)",
+                "transparent",
               ],
             }
           : undefined
@@ -109,8 +109,8 @@ const AIDiff = ({
           </span>
         ) : null}
         <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
-          <span className="text-[oklch(58%_0.17_150)]">+{added}</span>
-          <span className="text-destructive">-{removed}</span>
+          <span className="text-runs">+{added}</span>
+          <span className="text-broken">-{removed}</span>
         </span>
       </div>
 
@@ -135,8 +135,8 @@ const AIDiff = ({
                   }
                   className={cn(
                     "flex gap-3 px-3",
-                    line.kind === "added" && "bg-[oklch(72%_0.17_150_/_0.12)]",
-                    line.kind === "removed" && "bg-[oklch(63%_0.21_25_/_0.1)]"
+                    line.kind === "added" && "bg-runs-soft",
+                    line.kind === "removed" && "bg-broken-soft"
                   )}
                   initial={
                     // Only the added lines wipe. Context lines were already
@@ -165,8 +165,8 @@ const AIDiff = ({
                   <span
                     className={cn(
                       "w-2 shrink-0 select-none",
-                      line.kind === "added" && "text-[oklch(78%_0.17_150)]",
-                      line.kind === "removed" && "text-destructive",
+                      line.kind === "added" && "text-runs",
+                      line.kind === "removed" && "text-broken",
                       line.kind === "context" && "text-muted-foreground"
                     )}
                   >

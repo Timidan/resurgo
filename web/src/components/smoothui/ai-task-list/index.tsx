@@ -36,17 +36,15 @@ export type AITaskListProps = {
 const flatten = (tasks: AITask[]): AITask[] =>
   tasks.flatMap((task) => [task, ...flatten(task.children ?? [])]);
 
-const SUCCESS_COLOR = "oklch(72% 0.17 150)";
-const DANGER_COLOR = "oklch(63% 0.21 25)";
-
-const boxStroke = (status: AITaskStatus): string => {
+// Brand state colours (theme tokens), as classes so both themes work.
+const boxTone = (status: AITaskStatus): string => {
   if (status === "failed") {
-    return DANGER_COLOR;
+    return "stroke-broken fill-broken";
   }
   if (status === "done") {
-    return SUCCESS_COLOR;
+    return "stroke-runs fill-runs";
   }
-  return "currentColor";
+  return "stroke-current fill-current";
 };
 
 const TaskBox = ({
@@ -67,11 +65,8 @@ const TaskBox = ({
         viewBox={`0 0 ${BOX_SIZE} ${BOX_SIZE}`}
       >
         <motion.rect
-          animate={{
-            fillOpacity: isDone ? 0.12 : 0,
-            stroke: boxStroke(status),
-          }}
-          fill={isFailed ? DANGER_COLOR : SUCCESS_COLOR}
+          animate={{ fillOpacity: isDone ? 0.14 : 0 }}
+          className={boxTone(status)}
           height={12}
           rx={3.5}
           strokeWidth={1.4}
@@ -91,11 +86,10 @@ const TaskBox = ({
           // A keyframe on mount is deterministic, and `prefers-reduced-motion`
           // handles the accessible case in CSS with no JS branch at all.
           <path
-            className="ai-task-draw"
+            className="ai-task-draw stroke-runs"
             d={CHECK_PATH}
             fill="none"
             pathLength={1}
-            stroke={SUCCESS_COLOR}
             strokeDasharray="1 1"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -104,11 +98,10 @@ const TaskBox = ({
         )}
         {isFailed && (
           <path
-            className="ai-task-draw"
+            className="ai-task-draw stroke-broken"
             d="M 5 5 L 9 9 M 9 5 L 5 9"
             fill="none"
             pathLength={1}
-            stroke={DANGER_COLOR}
             strokeDasharray="1 1"
             strokeLinecap="round"
             strokeWidth={1.8}

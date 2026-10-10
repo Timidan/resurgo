@@ -25,11 +25,19 @@ export function BackgroundArt() {
   const rise = useTransform(scrollYProgress, [0, 0.4], [0, -90]);
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      {/* A soft pool of the accent colour behind the hero; tokens only, so it follows the theme. */}
       <div
-        className="absolute inset-0 opacity-[0.55]"
+        className="absolute inset-0"
         style={{
           backgroundImage:
-            "linear-gradient(to right, rgb(53 65 76 / 0.35) 1px, transparent 1px), linear-gradient(to bottom, rgb(53 65 76 / 0.35) 1px, transparent 1px)",
+            "radial-gradient(ellipse 55% 45% at 78% 12%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%)",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, color-mix(in srgb, var(--control) 55%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--control) 55%, transparent) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
           maskImage: "radial-gradient(ellipse 80% 60% at 70% 20%, black, transparent 75%)",
           WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 70% 20%, black, transparent 75%)",
@@ -37,11 +45,11 @@ export function BackgroundArt() {
       />
       <motion.svg
         viewBox="0 0 16 16"
-        className="absolute -right-[12vw] top-[4vh] h-[110vh] w-auto text-border"
+        className="absolute -right-[12vw] top-[4vh] h-[110vh] w-auto text-accent opacity-35"
         style={reduce ? undefined : { y }}
         fill="none"
         stroke="currentColor"
-        strokeWidth={0.12}
+        strokeWidth={0.1}
       >
         {MARK_PATHS.map((d, i) => (
           <motion.path
@@ -53,7 +61,7 @@ export function BackgroundArt() {
           />
         ))}
       </motion.svg>
-      <motion.div className="absolute left-[8vw] top-[62vh] size-3 bg-highlight/80" style={reduce ? undefined : { y: rise }} />
+      <motion.div className="absolute left-[8vw] top-[62vh] size-3 border border-control bg-evidence" style={reduce ? undefined : { y: rise }} />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { BackgroundArt } from "@/components/art";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { useTheme } from "@/lib/theme";
 import Landing from "@/pages/Landing";
 import RunView from "@/pages/RunView";
 import Runs from "@/pages/Runs";
@@ -12,16 +14,25 @@ function ScrollToTop() {
 }
 
 function Header() {
+  const theme = useTheme();
   const link = ({ isActive }: { isActive: boolean }) =>
     `rounded px-1 py-1 text-sm font-semibold underline-offset-8 hover:text-foreground ${isActive ? "text-foreground underline" : "text-muted-foreground"}`;
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" aria-label="Resurgo, home" className="flex items-center">
-          <img src="/brand/logo-wordmark-dark.svg" alt="resurgo" width={120} height={28} className="h-7 w-auto" />
+          {/* The brand's lifted-r wordmark; the file is chosen for the background it sits on. */}
+          <img
+            src={theme === "dark" ? "/brand/logo-wordmark-dark.svg" : "/brand/logo-wordmark-light.svg"}
+            alt="resurgo"
+            width={120}
+            height={28}
+            className="h-7 w-auto"
+          />
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-6">
+        <nav aria-label="Main" className="flex items-center gap-4 sm:gap-6">
           <NavLink to="/runs" className={link}>Runs</NavLink>
+          <ThemeToggle />
         </nav>
       </div>
     </header>
@@ -33,7 +44,10 @@ function Footer() {
     <footer className="border-t border-border">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p>Resurgo, pronounced reh-SUR-go: Latin for &ldquo;I rise again&rdquo;. Built for neatHack, 10 to 12 October 2026.</p>
-        <p>Not affiliated with the tools or repositories named on this site.</p>
+        <p className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <a href="/index.md" className="font-semibold text-foreground underline underline-offset-4">Agent view</a>
+          <span>Not affiliated with the tools or repositories named on this site.</span>
+        </p>
       </div>
     </footer>
   );
