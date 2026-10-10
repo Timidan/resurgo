@@ -1,0 +1,37 @@
+You are building Resurgo during neatHack. Read hackathon.md and resurgo/*.py first. Agent v2 was just committed. This follow-up (v2.1) closes the holes the v1 records and the v2 development runs exposed, before the held-out v2 sweep. Keep every change small and general, never specific to one repo.
+
+1. **Block fixes that weaken tests.** In the v1 held-out sweep, two Foundry repos were recorded as fixed, but only because the model added test exclusions (`no_match_path` and similar) to `foundry.toml`. Their failing tests need a local Ethereum RPC endpoint. The v2 prompt already forbids this, but a prompt is not a guard. Before applying any proposal, reject it if it:
+   - adds or changes a test filter in `foundry.toml` (`no_match_test`, `no_match_contract`, `no_match_path`, `match_test`, `match_contract`, `match_path`);
+   - deletes a test file (under a `test/` or `tests/` directory, or named `*.t.sol`, `*.test.*` or `*.spec.*`); or
+   - changes the `test` script in a package.json.
+
+   Feed the rejection back to the model once, as described in item 3, with the reason "this skips or weakens tests". A second weakening proposal ends the run as broken, with the reason recorded. Renaming or rewriting a test so that it still runs is allowed, for example migrating `testFail*` to `vm.expectRevert`. That counts as a code change and waits for approval.
+2. **Record external services as gaps, not fixes.** Let the model answer `{"kind": "gap", "reason": "<the service or credential the step needs>", "rationale": ..., "confidence": ...}`.
+   - Accept it only when the install and build steps have passed and the failing step is test or serve. The run then ends as `runs_with_gaps`, with `needs <reason> (<step> step)` in `gaps`, no fix applied and no patch.
+   - Reject a gap answer for any other step.
+   - Describe the option in the SYSTEM prompt in one or two plain lines.
+3. **Re-ask on malformed proposals instead of stopping.** In the v2 development sweep, electron-vite-monorepo ended after a single proposal whose package.json content was not valid JSON. Handle a malformed proposal the way an invalid-JSON reply is handled today: re-ask once with the exact error, and end the run only on the second failure. A malformed proposal is invalid JSON content in a proposed package.json, or a lockfile with model-written content. The weakening rejections from item 1 use the same single re-ask.
+4. **Add a native-module rule.** In the v2 development sweep, agent-arena regressed. v1 fixed it by pinning Node 20, but this time the model went after dependencies instead. In the premise check, better-sqlite3 9.6.0 failed to compile on Node 24 and built on Node 22.
+   - Add a deterministic rule that fires when all three are true: the install fails with native-build errors (`gyp ERR!`, node-gyp or prebuild-install failures, C++ compile errors in `node_modules`), the run uses the baseline Node 24, and the repo declares no Node version (no `engines.node`, `.nvmrc`, `.node-version` or volta).
+   - The rule writes `.nvmrc` with 22 as one rule attempt, before the model is asked. If that still fails the same way, the model takes over as today.
+5. **Tests.** Add the smallest case for each item to the existing tests, then run `uv run --with pytest pytest -q resurgo`:
+   - the guard: a `foundry.toml` filter is rejected, and a renamed test file is not;
+   - the gap rule: accepted at the test step, rejected at install;
+   - the malformed re-ask;
+   - the native-module rule: it fires on a gyp error with no pin, and doesn't fire when a pin exists.
+6. **Real checks, on the development set only:**
+   - Re-run `Timidan/agent-arena --path commentator` and `buqiyuan/electron-vite-monorepo` at their dev SHAs.
+   - Find one small, real Foundry repo that is NOT in eval/heldout.json and has a fork or RPC-dependent test that fails without an endpoint. Pin its SHA, add it to eval/dev.json and run it. It should end as `runs_with_gaps` with the RPC need named, and not with excluded tests.
+   - Bun has never run on a real repo. Run two small Bun workspaces and add both to eval/dev.json: `coderbuzz/zh` at `ca0e65ea04517752c8e0037ed0bac146fec2bb2c` (bun.lock, no packageManager field) and `inixiative/template` at `5aa4f850d12f27065e9dba7e1adcaf6131a91570` (declares bun@1.4.2). If Bun detection, install or scripts fail for a reason in our runner, fix the runner.
+   - Report each outcome.
+
+Commit in small steps and add a short entry to hackathon.md.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- No unfiltered `docker ps`, `docker network ls` or `docker images`. Only touch `resurgo-*` resources and the images you pull.
+- Never open pull requests.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report: what changed, the test results, each dev run's outcome, and anything you weren't sure about.
