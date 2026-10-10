@@ -44,6 +44,32 @@ SmoothUI (via the shadcn registry): `ai-task-list`, `ai-reasoning`, `ai-diff`, `
 - **/api/runs** now carries steps, attempts, rationale, error line, problem evidence and a patch preview, so the landing page fetches only the featured run's record. Records are cached by mtime.
 - **Agent view**: `/index.md` and `/llms.txt` are generated from the live records; footer link "Agent view".
 
+## Third pass: motion review (docs/ANIMATION.md)
+
+Checked against Lasseter's principles as listed in `docs/ANIMATION.md` (the PDF URL returned 404 when fetched, so the doc's list was the reference).
+
+- **Tokens** live in `src/index.css`: `--ease-enter`, `--ease-exit`, `--ease-arc`, `--dur-chip` 150 ms, `--dur-window` 600 ms, `--blink` 400 ms. `lib/ease.ts` reads `--ease-enter` for the JS animations (SmoothUI diff and reasoning). `main.tsx` imports the CSS before the app so the token exists when it is read. Nothing else defines an entrance easing.
+- **Windows** rise with CSS (`.win`, `data-in`), not per-frame JS: Y uses the enter easing, X the arc easing, exits are 300 ms and gentler. The title bar leads; `.win-body` follows 120 ms later.
+- **Staging**: `buildStory` now runs strictly one beat at a time (cursor wait, typing, run, reading pause, agent thinking, agent streaming, reading pause, next command). `story.focus` says which window acts; the others dim to 0.55 and all return to full opacity 700 ms after the verdict. The agent's streamed text used to overlap the terminal's next command; it no longer does.
+- **Anticipation**: two cursor blinks (800 ms) before each typed command; spinner and "Thinking…" in the agent window for 1.3 s before its text streams; clean-container window rises before its first tile; solution-tab indicator moves 160 ms before its content swaps; chat reply shows "Looking in the gallery…" for 450 ms before streaming.
+- **Reading pauses** are `250 ms + 30 ms/word` (`readingMs` in `lib/stream.ts`): after a failing step's error lines, after each streamed rationale, before the chat replay takes over, in the run-view replay after a failing step, and before a solution tab advances (min 1.8 s).
+- **Exaggeration, three places**: the failing step's row flashes red once (300 ms, `.flash-bad`), the first command that passes after the last repair gets one lemon sweep (`.sweep`), the verdict (and the replay button when it turns to its verdict) overshoots once to 1.03 (`.verdict-land`).
+- **Lift**: when a verified run's verdict lands in a replay (hero, chat, run view) `lib/beat.ts` fires `resurgo:lift` and the header wordmark rises 4 px and settles. The whole wordmark lifts; it is an `<img>` of the brand SVG, so the r alone can't be moved without editing the brand file.
+- **Secondary action** pauses while a story plays (`useBeatOwner` / `data-beat` on `<html>`): the tile spotlight timer stops, the tile dot stops pulsing. Cursor blink is only ever shown while a command waits to be typed; typed and streamed text uses a solid cursor.
+- **Squash**: `.press` gives buttons 0.97 on press and a 150 ms return. Never applied to text blocks.
+- **Theme toggle**: colours cross-fade 240 ms (`.theme-fade`, off under reduced motion); the icon turns in.
+- **Route change**: the page rises in (260 ms); run-view tab panels do the same.
+- **Reveals and icon draws** are CSS now (`lib/inview.ts`); no motion-library variants with their own easings.
+- **Reduced motion**: stories jump to the final frame, reveals are plain, streams show full text, tab and spotlight timers do not run, and the global rule zeroes the remaining CSS durations.
+
+Not done / limits:
+
+- **No frame captures.** Chromium and the API server could not be started in this session (non-interactive, commands needing approval were refused), so nothing was screenshotted in either theme. Checked by build (`tsc -b` + `vite build`) and by reading the timeline code against a record's shape. Capture mid-states before relying on the timings.
+- The winning-fix sweep needs a passing command after the last repair in the agent container. If the fix was only ever proved in the clean container, no row is swept.
+- The hero loop fades the whole story out for 350 ms before restarting; individual windows do not exit one by one.
+- Tiles that slide along the list (more than six repos) jump to their new position; only the arriving tile animates.
+- Wall time is compressed in the story, but every timer counts to the recorded duration and is labelled. A full run is now longer than before because of the reading pauses.
+
 ## Not done
 
 - Axe and a scripted keyboard walk were not run; checked by headless-Chromium screenshots in both themes and by reading the focus styles (2 px accent-strong outline, roving tabindex on tabs). Brand tokens carry their own contrast ratios; the pairs added here (`canvas` on `runs`/`broken`/`gaps` bars, `on-accent` on `accent-strong`) were not re-measured.

@@ -204,7 +204,10 @@ body {
 /* Staging: while another window acts, this one steps back. */
 .win[data-in="true"][data-dim="true"] {
   opacity: 0.55;
-  transition: opacity 300ms var(--ease-exit);
+  transition:
+    opacity 300ms var(--ease-exit),
+    transform var(--dur-window) var(--ease-enter),
+    translate var(--dur-window) var(--ease-arc);
 }
 /* The title bar leads; the body follows about 120 ms behind it. */
 .win-body {
@@ -333,8 +336,7 @@ body {
 @keyframes dot-pulse {
   50% { opacity: 0.4; }
 }
-[data-beat="on"] .dot-pulse,
-[data-beat="on"] .stream-cursor.blink {
+[data-beat="on"] .dot-pulse {
   animation-play-state: paused;
 }
 

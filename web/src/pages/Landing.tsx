@@ -44,7 +44,9 @@ function CommandChip({ command }: { command: string }) {
         }}
         className="press shrink-0 rounded-md border border-control px-3 py-1.5 text-xs font-semibold hover:bg-muted"
       >
-        <span aria-live="polite">{copied ? "✓ Copied" : "Copy"}</span>
+        <span aria-live="polite">
+          <span key={String(copied)} className="settle inline-block">{copied ? "✓ Copied" : "Copy"}</span>
+        </span>
       </button>
     </div>
   );
