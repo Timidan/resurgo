@@ -461,6 +461,9 @@ def execute(repo, sha, subdir, root, tags):
               "agent_version": __version__, "started": started,
               "agent": {"steps": []}, "verifier": {"steps": []}}
     record.update({k: v for k, v in tags.items() if v})   # agent_version, set, sweep_id
+    span_context = getattr(root, "get_span_context", None)   # absent when tracing is off
+    if span_context:
+        record["trace_id"] = format(span_context().trace_id, "032x")
     root.set_attribute("repo", repo)
     root.set_attribute("sha", sha)
     for key in ("agent_version", "set", "sweep_id"):
