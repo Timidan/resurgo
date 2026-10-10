@@ -19,8 +19,8 @@ import { useLandingData, type LandingData, type StatGroup } from "./landing-data
 const LABEL = "font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground";
 
 /** The command that reproduces the featured run, as logged in the build log. */
-const commandFor = (d: RunDetail | null) =>
-  d ? `uv run python -m resurgo.run ${d.result.repo} ${d.result.sha}${d.result.path ? ` --path ${d.result.path}` : ""}` : null;
+const commandFor = (r: { repo?: string | null; sha?: string | null; path?: string | null } | null) =>
+  r?.repo && r.sha ? `uv run python -m resurgo.run ${r.repo} ${r.sha}${r.path ? ` --path ${r.path}` : ""}` : null;
 
 const stepRows = (steps: Step[], prefix: string): TermRow[] =>
   steps.map((s, i) => ({
@@ -60,7 +60,8 @@ function CommandChip({ command }: { command: string }) {
 /* 1. Hero ------------------------------------------------------------------ */
 function Hero({ data }: { data: LandingData }) {
   const f = data.featured;
-  const cmd = commandFor(f);
+  // From the list row, so the command is there as soon as the list is, and the hero does not grow when the record arrives.
+  const cmd = commandFor(f?.result ?? data.featuredSummary);
   return (
     <section className="mx-auto grid w-full max-w-7xl gap-14 px-4 pb-24 pt-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24">
       <div className="min-w-0">
@@ -193,7 +194,7 @@ function Projects({ data }: { data: LandingData }) {
             {data.latest.map((r) => (
               <li key={r.id}>
                 <Link to={`/runs/${r.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-muted">
-                  <span className="min-w-0 flex-1 truncate font-semibold">
+                  <span className="min-w-[12rem] flex-1 truncate font-semibold">
                     {r.repo}{r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
                   </span>
                   <span className="font-mono text-sm tabular-nums text-muted-foreground">{fmtDur(r.duration_s)}</span>
@@ -393,7 +394,7 @@ function Artifacts({ data }: { data: LandingData }) {
     2,
   );
   const cards: { title: string; body: string; code: string }[] = [
-    { title: "Reproduce it", body: "One command re-runs the check from a fresh clone.", code: commandFor(f) ?? "" },
+    { title: "Reproduce it", body: "One command re-runs the check from a fresh clone.", code: commandFor(f.result) ?? "" },
     { title: "The run record", body: "Every run writes one JSON file. This is the real one, trimmed.", code: record },
     ...(f.fix_patch ? [{ title: "The patch", body: "The fix, as a plain unified diff you can read before it merges.", code: f.fix_patch.trim() }] : []),
     ...(proof !== "[]" ? [{ title: "The proof", body: "What the separate clean container ran, and how each step ended.", code: proof }] : []),

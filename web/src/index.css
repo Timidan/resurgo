@@ -317,7 +317,8 @@ p { text-wrap: pretty; }
   border-radius: 9999px;
   border: 2px solid var(--control);
   background: var(--canvas);
-  --l: clamp(0, calc((var(--beam, 0) * 3 - var(--i)) * 10), 1);
+  /* Lit from a tenth of a segment before the beam arrives, so the last node is lit when it ends. */
+  --l: clamp(0, calc((var(--beam, 0) * 3 - var(--i) + 0.1) * 10), 1);
 }
 .beam-node-fill {
   position: absolute;
