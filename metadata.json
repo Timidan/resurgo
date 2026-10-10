@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4K8AXFSA7NT7STE6PS3DRTV",
+  "strategy": "manual-commit",
+  "branch": "web",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "api/main.py",
+    "web/src/components/Story.tsx",
+    "web/src/lib/run.ts",
+    "web/src/pages/RunView.tsx",
+    "web/src/pages/landing-data.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 10764,
+    "cache_read_tokens": 949231,
+    "output_tokens": 5843,
+    "api_call_count": 8
+  }
+}
