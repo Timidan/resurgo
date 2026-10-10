@@ -1,0 +1,39 @@
+You are building Resurgo during neatHack. Read docs/PLAN.md, docs/NEATLOGS.md, hackathon.md and resurgo/*.py first. Milestone 2b: handle every project type in the test set and apply the full proof bar. Keep the code small.
+
+1. **Project-type detection** from the manifests:
+   - Node web app: has a start or dev script, or a web framework dependency.
+   - Node library or CLI.
+   - Node monorepo: pnpm-workspace.yaml or a `workspaces` field.
+   - Foundry: foundry.toml.
+   - Rust: Cargo.toml, including workspaces.
+   - Desktop app: electron.
+   Record the detected type and why.
+2. **Toolchain images**, always capped at 2 CPU and 4 GB, with a time cap per type:
+   - Node: `node:<major>-bookworm` with corepack, 15 minutes.
+   - Foundry: install a pinned foundryup release or use the official foundry image, 10 minutes.
+   - Rust: `rust:<version>-bookworm`, taking the version from rust-toolchain(.toml) if present and stable otherwise, 25 minutes.
+3. **Proof bar per type.** The verifier must pass every step that applies:
+   - **Node web app:** install, build if a script exists, start the server inside the verifier container, wait for the port, then `GET /`. Assert a 2xx or 3xx status and a non-empty body with no framework error markers. Stop the server.
+   - **Node library or CLI:** install, build if present, and test if there's a real test script (not npm's default "no test specified").
+   - **Foundry:** `forge build` and `forge test`.
+   - **Rust:** `cargo build` and `cargo test`.
+   - **Desktop app:** install and build, then report `runs_with_gaps`, because it can't be started headless.
+   - **Missing tests:** `runs_with_gaps` with the reason.
+   - **Secrets:** if `.env.example` exists, fill `.env` from it with safe dummy values. If a step still fails only because a real secret or external service is needed, report `runs_with_gaps: needs <NAME>`.
+4. **Final statuses:** `runs`, `runs_with_gaps` (with reasons), `broken` (with the last failing step), `unsupported` and `model_limited`.
+5. **The repair loop works on a failure in ANY step,** not just install, with the same budget and the same config-vs-code policy: code fixes go to `needs_approval`.
+6. **Real runs on the DEVELOPMENT set only.** Never run the held-out set.
+   - `Timidan/sentry-somnia` at `e1875a06dde6`;
+   - `buqiyuan/electron-vite-monorepo` at `6ead2579915d`;
+   - `chroxify/feedbase` at `18dca32a923e`;
+   - re-run `Timidan/rinne` at `5c3370f9a736` and `Timidan/agent-arena` at `f6fc3243ac98` with `--path commentator` to check for regressions.
+   Never open pull requests on repos you don't own; results stay local. Record real results, including failures.
+7. Add one smoke check for type detection, commit in small steps, and update hackathon.md.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- No unfiltered `docker ps`, `docker network ls` or `docker images`. Only touch `resurgo-*` resources, plus the images you pull.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report: a table of runs with status, time and model calls, and anything left undone.
