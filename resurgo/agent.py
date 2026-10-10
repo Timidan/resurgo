@@ -17,25 +17,27 @@ from resurgo.gateway import MAX_REQUEST_BYTES, ModelLimited, ModelUnavailable
 from resurgo.rules import LOCKFILES, apply_rules
 
 MAX_ATTEMPTS = 4          # fix attempts per repo, a rule candidate counts as one
-BUDGET_S = 15 * 60        # wall clock per repo for the loop
 CONFIG_NAMES = {".nvmrc", ".node-version", ".npmrc", ".yarnrc", ".yarnrc.yml",
-                "pnpm-workspace.yaml", ".tool-versions"}
+                "pnpm-workspace.yaml", ".tool-versions", "foundry.toml", "rust-toolchain",
+                "rust-toolchain.toml", ".env.example"}
 PACKAGE_JSON_KEYS = {"packageManager", "engines", "volta", "pnpm", "overrides", "resolutions",
                      "devEngines"}
-LOCKFILE_NAMES = {n for n, _ in LOCKFILES}
+LOCKFILE_NAMES = {n for n, _ in LOCKFILES} | {"Cargo.lock"}
+UNFIXABLE_STEPS = {"toolchain"}
 MANIFEST_BYTES = 12_000
 
-SYSTEM = """You repair a Node.js project that fails on a fresh machine (Node 24, corepack, \
-the latest package manager). Diagnose the failing step from the command, exit code and output, \
-then reply with ONE JSON object and nothing else:
+SYSTEM = """You repair a project (Node.js, Foundry or Rust) that fails on a fresh machine. \
+Diagnose the failing step (install, build, test, or serve: start the server and GET /) from \
+the command, exit code and output, then reply with ONE JSON object and nothing else:
 {"kind": "config" | "code", "files": [{"path": "<path relative to the repo root>", \
 "content": "<complete new file content>"}], "rationale": "<why this fixes it>", \
 "confidence": <number from 0 to 1>}
 kind "config": only version pins and tool settings: .nvmrc, .node-version, .npmrc, .yarnrc, \
-.yarnrc.yml, pnpm-workspace.yaml, and in package.json only the packageManager, engines, volta, \
+.yarnrc.yml, pnpm-workspace.yaml, foundry.toml, rust-toolchain(.toml), .env.example, and in \
+package.json only the packageManager, engines, volta, \
 pnpm (for example onlyBuiltDependencies), overrides, resolutions and devEngines fields. Give \
 complete file contents; keep every other package.json field unchanged. To regenerate a lockfile, \
-list it with content "". These are applied and re-run.
+list it (or Cargo.lock) with content "". These are applied and re-run.
 kind "code": any change to source, scripts or dependencies. These are NOT applied; they are \
 recorded for human approval. Prefer a config fix when one exists."""
 
@@ -110,7 +112,8 @@ def config_problem(box, proposal):
 def build_prompt(box, failure, attempts):
     """User message: command, exit code, manifests, history, then as much output tail as fits
     under the request limit."""
-    parts = [f"Failing step: {failure['step']}", f"Command: {failure['command']}",
+    parts = [f"Project type: {box.ptype} ({box.why}); image {box.image}",
+             f"Failing step: {failure['step']}", f"Command: {failure['command']}",
              f"Exit code: {failure['exit_code']}", f"Environment: {box.versions or 'unknown'}",
              f"Project path in repo: {box.subdir or '.'}"]
     if attempts:
@@ -118,7 +121,8 @@ def build_prompt(box, failure, attempts):
         for a in attempts:
             parts.append(f"- {a['source']} {a['kind']} {a['files']}: {a.get('result')}")
     names = ["package.json", ".nvmrc", ".node-version", ".npmrc", ".yarnrc.yml",
-             "pnpm-workspace.yaml"] + sorted(LOCKFILE_NAMES)
+             "pnpm-workspace.yaml", "foundry.toml", "Cargo.toml", "rust-toolchain.toml",
+             "rust-toolchain", ".env.example"] + sorted(LOCKFILE_NAMES)
     found = box.read_many([p for n in names for p in {box.rel(n), n}])
     seen = set()
     for name in names:
@@ -154,14 +158,14 @@ def build_graph(box, model, deadline):
 
     def run(state):
         if over_budget():
-            return {"status": "budget_exhausted", "detail": f"{BUDGET_S // 60} minute budget used"}
+            return {"status": "budget_exhausted", "detail": f"{box.cap_s // 60} minute budget used"}
         failure = box.pipeline()
         attempts = settle(state.get("attempts", []),
                           "passed" if failure is None else f"failed at {failure['step']}")
         if failure is None:
             return {"status": "passed", "failure": {}, "attempts": attempts}
         out = {"failure": failure, "attempts": attempts}
-        if failure["step"] not in ("install", "build"):
+        if failure["step"] in UNFIXABLE_STEPS:
             out.update(status="fail", detail=f"{failure['step']} failed; not a fixable step")
         elif len(applied({"attempts": attempts})) >= MAX_ATTEMPTS:
             out.update(status="budget_exhausted", detail=f"{MAX_ATTEMPTS} fix attempts used")
@@ -189,7 +193,7 @@ def build_graph(box, model, deadline):
 
     def diagnose(state, config: RunnableConfig):
         if over_budget():
-            return {"status": "budget_exhausted", "detail": f"{BUDGET_S // 60} minute budget used"}
+            return {"status": "budget_exhausted", "detail": f"{box.cap_s // 60} minute budget used"}
         user = build_prompt(box, state["failure"], state.get("attempts", []))
         try:
             raw = ask([SystemMessage(SYSTEM), HumanMessage(user)], config)
