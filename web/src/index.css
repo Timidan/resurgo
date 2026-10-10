@@ -259,6 +259,17 @@ body {
   100% { opacity: 1; transform: none; }
 }
 
+/* Follow-through for things already on screen: a 2 px nudge that settles, staggered by --i. */
+.follow {
+  animation: follow 220ms var(--ease-enter) backwards;
+  animation-delay: calc(var(--d, 0ms) + var(--i, 0) * 45ms);
+}
+@keyframes follow {
+  0% { transform: none; }
+  40% { transform: translateY(2px); }
+  100% { transform: none; }
+}
+
 /* Exaggeration, three places only. */
 /* 1. A failing step: one red flash, 300 ms. */
 .flash-bad {
