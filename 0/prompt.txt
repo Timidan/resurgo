@@ -1,0 +1,37 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read web/NOTES.md, docs/LANDING.md, docs/ANIMATION.md and api/main.py first. Keep changes small and commit in small steps.
+
+1. **Merge prep.**
+   - Add `web/tsconfig.tsbuildinfo` to .gitignore and untrack it with `git rm --cached`.
+   - Commit `docs/ANIMATION.md`, `docs/LANDING.md` and `docs/reference/` as they are.
+2. **Fix two layout bugs from the last review.**
+   - At 420px wide, the landing page scrolls sideways. Find the element that overflows and fix it at its source. Don't hide the overflow on `body`.
+   - Long step output in the run view shows inner horizontal scrollbars. Wrap long lines instead (pre-wrap, and break long tokens), keeping the monospace look.
+3. **Add the install entry point.** The GitHub App is called "Resurgo Agent", and its install page is `https://github.com/apps/resurgo-agent/installations/new`.
+   - Make "Install on GitHub" the primary action in the landing hero and in the header. Use the existing button style; add no new component library.
+   - Keep the copy-command chip as the secondary option ("or run it yourself").
+   - Under the button, add one short line saying what happens. It must be true today: "Pick the repos. Resurgo rebuilds each from a fresh clone and opens a pull request only for a fix that passes in a clean container." Don't promise schedules, notifications or anything else that isn't built yet.
+   - Any motion you add follows docs/ANIMATION.md, which is a review against Lasseter's principles. Use its one easing and its timing windows.
+4. **Add deploy files.** The app will run as one container behind an existing reverse proxy, on a Docker network called `public_proxy`.
+   - A `Dockerfile` at the repo root, with two stages:
+     - A Node stage builds `web/` with `npm ci && npm run build`.
+     - A Python stage installs only what the API needs (fastapi and uvicorn, at the versions locked in uv.lock). It copies `api/` and the built `web/dist`, runs as a non-root user, sets `RUNS_DIR=/runs` and serves `uvicorn api.main:app --host REDACTED --port 8000`.
+     - Add a `.dockerignore` so the image never contains `.env`, `runs/`, `.entire/`, `.git/` or the host's node_modules.
+   - `deploy/compose.yaml`:
+     - one service, `resurgo-web`, built from that Dockerfile;
+     - `restart: unless-stopped`;
+     - the external network `public_proxy`;
+     - the runs directory mounted read-only at `/runs`, its host path taken from an env var `RESURGO_RUNS_DIR`;
+     - no published ports.
+   - Do NOT build or run the image, because the Docker host is busy with a benchmark. Check the Dockerfile by reading it carefully instead.
+5. **Check your work.**
+   - Build the web app locally with `npm run build`. Restart nothing: the API already running on port 8787 serves `web/dist`.
+   - Run the existing render-check script on `/` and on one run page, at 420px and 1280px, in light and dark.
+   - Confirm three things: no horizontal page scroll at 420px, the Install button links to the right URL, and no inner horizontal scrollbars in step output.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands at all.
+- Never print secrets or server addresses.
+- No tool or AI attribution in commits.
+- Finish with a short report: what changed, the check results with screenshot paths, and anything you weren't sure about.
