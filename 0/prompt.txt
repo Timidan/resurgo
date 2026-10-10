@@ -1,0 +1,24 @@
+You are working on Resurgo's web app and its install worker, on the `web` branch in this worktree. Read web/NOTES.md, docs/ANIMATION.md, resurgo/worker.py, web/src/pages/Installed.tsx, web/src/pages/Runs.tsx, web/src/components/SolutionTabs.tsx and web/src/components/RepoChat.tsx first. Then read the findings file: /tmp/claude-1000/-home-timidan-Desktop-neatharness/457a6a36-16f5-4310-8c76-7e25ac551443/scratchpad/build/ux_findings.md. Every item in it was checked in the browser or in the code.
+
+Apply items 1 to 12, in severity order: the HIGH items first (10, 6, 1), then MEDIUM, then LOW. Commit in small steps.
+
+Constraints:
+- Use the existing components, tokens and Tailwind conventions. Add no new dependency.
+- Item 1 changes `resurgo/worker.py` and its status file. Keep the existing contract keys and only add `reason`, `queued_at` (installation) and `started` (repo entry). Extend `resurgo/test_worker.py` by the smallest case, and run `uv run --with pytest pytest -q resurgo`.
+- Item 5 may need a short "Run it yourself" section in README.md. Write only what is true about running `resurgo.run`: Docker host, uv, the model gateway env var and the optional neatlogs key. Name no servers or addresses.
+- Copy follows the site's voice: sentence case, verb-first buttons, no "please".
+- Any motion follows docs/ANIMATION.md.
+
+Check:
+- Run `npm run build`.
+- Run `web/check-render.mjs` with 360 added to its widths (360, 420 and 1280, light and dark), against the API on port 8787.
+- Confirm no page-level sideways scroll at 360 on `/`, `/runs`, a run page, `/installed/<id>` and `/data`.
+- Take close-ups of the How-it-works chips at 360, the gallery cards at 360, and `/installed` in its waiting state with the new reason. Look at them yourself.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- No tool or AI attribution in commits.
+- Don't invent numbers, prices or promises.
+- Finish with a short report: what changed per item, the check results with screenshot paths, and anything you weren't sure about.
