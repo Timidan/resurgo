@@ -505,7 +505,8 @@ def execute(repo, sha, subdir, root, tags):
                            "attempts": state.get("attempts", []), "steps": box.steps,
                            "gaps": box.gaps, "proof": box.proof}
         record["model_calls"] = state.get("model_calls", [])
-        record["needs_approval"] = status == "needs_approval"
+        record["needs_approval"] = (status == "needs_approval" or
+                                    any(a.get("needs_approval") for a in record["agent"]["attempts"]))
         record["last_failure"] = state.get("failure") or None
         if status in ("model_limited", "unsupported"):
             result = status

@@ -50,7 +50,8 @@ def entry_from_record(item, record):
             "seconds": round(record.get("ended", 0) - record.get("started", 0)),
             "model_calls": len(record.get("model_calls", [])),
             "fix_kind": ", ".join(kinds) or "none",
-            "needs_approval": sum(a.get("status") == "needs_approval" for a in attempts),
+            "fixed": bool(record.get("fixed")),
+            "needs_approval": bool(record.get("needs_approval")),
             "detail": (record.get("agent", {}).get("detail") or "")[:200]}
 
 
@@ -59,12 +60,16 @@ def summarize(entries):
     for e in entries:
         by_status[e["status"]] = by_status.get(e["status"], 0) + 1
     verified = sum(by_status.get(s, 0) for s in VERIFIED)
+    ok = [e for e in entries if e["status"] in VERIFIED]
+    awaiting = sum(e["needs_approval"] for e in ok)
+    pr_ready = sum(bool(e.get("fixed")) and not e["needs_approval"] for e in ok)
     secs = [e["seconds"] for e in entries]
     return {"repos": len(entries), "by_status": by_status, "verified": verified,
             "verified_rate": round(verified / len(entries), 3) if entries else None,
+            "verified_pr_ready_config": pr_ready, "verified_awaiting_approval_code": awaiting,
+            "verified_no_fix": verified - pr_ready - awaiting,
             "median_seconds": statistics.median(secs) if secs else None,
-            "model_calls": sum(e["model_calls"] for e in entries),
-            "needs_approval": sum(e["needs_approval"] for e in entries)}
+            "model_calls": sum(e["model_calls"] for e in entries)}
 
 
 def render_md(meta, entries):
@@ -75,13 +80,17 @@ def render_md(meta, entries):
              + f". Verified {s['verified']} (runs or runs_with_gaps)"
              + (f", median {s['median_seconds']}s" if s["median_seconds"] is not None else "")
              + f", {s['model_calls']} model calls.", "",
+             f"- Verified, PR-ready (config): {s['verified_pr_ready_config']}",
+             f"- Verified, awaiting approval (code): {s['verified_awaiting_approval_code']}",
+             f"- Verified, no fix needed: {s['verified_no_fix']}", "",
              "| Repo | Type | Status | Proof steps | Time | Model calls | Fix kind | Needs approval |",
              "| --- | --- | --- | --- | --- | --- | --- | --- |"]
     for e in entries:
         name = e["repo"] + (f" ({e['path']})" if e["path"] else "")
         status = e["status"] + (" (service)" if e.get("serve_proof") == "service" else "")
         lines.append(f"| {name} | {e['type']} | {status} | {e['steps_passed']}/{e['steps_total']} | "
-                     f"{e['seconds']}s | {e['model_calls']} | {e['fix_kind']} | {e['needs_approval']} |")
+                     f"{e['seconds']}s | {e['model_calls']} | {e['fix_kind']} | "
+                     f"{'yes' if e['needs_approval'] else 'no'} |")
     return "\n".join(lines) + "\n"
 
 

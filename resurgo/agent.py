@@ -38,8 +38,11 @@ package.json only the packageManager, engines, volta, \
 pnpm (for example onlyBuiltDependencies), overrides, resolutions and devEngines fields. Give \
 complete file contents; keep every other package.json field unchanged. To regenerate a lockfile, \
 list it (or Cargo.lock) with content "". These are applied and re-run.
-kind "code": any change to source, scripts or dependencies. These are NOT applied; they are \
-recorded for human approval. Prefer a config fix when one exists."""
+kind "code": any change to source, tests, scripts, dependencies or build setup (for example \
+turbo.json), including package.json fields other than those above. A code fix is applied in an \
+isolated sandbox only to verify that it works, then held for the owner's approval; it is never \
+merged on its own. Prefer a config fix when one exists. Never make a step pass by removing, \
+skipping or weakening a test, a build or a check."""
 
 
 class State(TypedDict, total=False):
@@ -88,25 +91,29 @@ def parse_proposal(raw):
     return p, None
 
 
-def config_problem(box, proposal):
-    """Why this config proposal cannot be applied automatically, or None."""
+def proposal_problem(box, proposal):
+    """(malformed, code_reason). `malformed` is why the proposal cannot be applied at all (a
+    lockfile with written content, invalid package.json). `code_reason` is why it is a code change
+    although it may be labelled config (a file outside CONFIG_NAMES, a non-config package.json
+    key). Each is None when it does not apply."""
+    code = None
     for f in proposal["files"]:
         name = f["path"].rsplit("/", 1)[-1]
         if name in LOCKFILE_NAMES:
             if f["content"] != "":
-                return f"{f['path']}: a lockfile can only be regenerated (content \"\")"
+                return f"{f['path']}: a lockfile can only be regenerated (content \"\")", None
         elif name == "package.json":
             old = box.read(f["path"])
             try:
                 old, new = json.loads(old or "{}"), json.loads(f["content"])
             except ValueError:
-                return f"{f['path']}: not valid JSON"
+                return f"{f['path']}: not valid JSON", None
             changed = {k for k in old.keys() | new.keys() if old.get(k) != new.get(k)}
-            if changed - PACKAGE_JSON_KEYS:
-                return f"{f['path']}: changes {sorted(changed - PACKAGE_JSON_KEYS)}, which is not config"
-        elif name not in CONFIG_NAMES:
-            return f"{f['path']}: not a config file"
-    return None
+            if changed - PACKAGE_JSON_KEYS and not code:
+                code = f"{f['path']}: changes {sorted(changed - PACKAGE_JSON_KEYS)}, which is not config"
+        elif name not in CONFIG_NAMES and not code:
+            code = f"{f['path']}: not a config file"
+    return None, code
 
 
 def build_prompt(box, failure, attempts):
@@ -122,7 +129,7 @@ def build_prompt(box, failure, attempts):
             parts.append(f"- {a['source']} {a['kind']} {a['files']}: {a.get('result')}")
     names = ["package.json", ".nvmrc", ".node-version", ".npmrc", ".yarnrc.yml",
              "pnpm-workspace.yaml", "foundry.toml", "Cargo.toml", "rust-toolchain.toml",
-             "rust-toolchain", ".env.example"] + sorted(LOCKFILE_NAMES)
+             "rust-toolchain", ".env.example"] + sorted(LOCKFILE_NAMES - {"bun.lockb"})  # binary
     found = box.read_many([p for n in names for p in {box.rel(n), n}])
     seen = set()
     for name in names:
@@ -224,17 +231,19 @@ def build_graph(box, model, deadline):
         entry = {"source": "model", "kind": p["kind"], "files": [f["path"] for f in p["files"]],
                  "rationale": p["rationale"], "confidence": p["confidence"], "result": None,
                  "recovered_from_invalid_json": p.get("recovered_from_invalid_json", False)}
-        problem = None
-        if p["kind"] == "code":
-            problem = "code fix, not applied in this milestone"
-        elif not p["files"]:
-            problem = "config proposal has no files"
+        code = None
+        if p["files"]:
+            problem, code = proposal_problem(box, p)
         else:
-            problem = config_problem(box, p)
+            problem = "proposal has no files"
         if problem:
             entry.update(status="needs_approval", result=problem, files_content=p["files"])
             status = "needs_approval" if p["files"] else "fail"
             return {"attempts": attempts + [entry], "status": status, "detail": problem}
+        if p["kind"] == "code" or code:
+            # a code change is applied here only to verify it; the owner approves it later
+            entry.update(kind="code", needs_approval=True,
+                         approval_reason=code or "proposed as a code change")
         box.write({f["path"]: f["content"] for f in p["files"] if f["content"] != ""})
         box.remove([f["path"] for f in p["files"] if f["content"] == ""])
         entry["status"] = "applied"

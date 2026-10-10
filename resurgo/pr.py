@@ -29,6 +29,8 @@ def refusal(record, patch, run_sha, head_sha, existing_pr):
     """A reason the pull request must not be opened, or None."""
     if (record.get("verifier") or {}).get("passed") is not True:
         return "the verifier did not pass for this run"
+    if record.get("needs_approval"):
+        return "this fix changes code and waits for the owner's approval"
     if not (patch or "").strip():
         return "the run has no fix.patch to propose"
     if run_sha != head_sha:
