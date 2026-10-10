@@ -79,8 +79,10 @@ def step(name, container, cmd, timeout, home=NODE_HOME):
     try:
         code, out = docker("exec", "-u", "1000:1000", "-e", f"HOME={home}", "-w", home, container,
                            "bash", "-c", ENV_PREFIX + cmd, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        code, out = -1, f"timed out after {timeout}s"
+    except subprocess.TimeoutExpired as e:
+        partial = "".join(x.decode(errors="replace") if isinstance(x, bytes) else x or ""
+                          for x in (e.stdout, e.stderr))
+        code, out = -1, scrub(partial) + f"\ntimed out after {timeout}s"
     rec = {"name": name, "command": cmd, "exit_code": code,
            "duration_s": round(time.monotonic() - w0, 1), "started": t0, "ended": time.time(),
            "output_tail": out.splitlines()[-TAIL_LINES:]}
