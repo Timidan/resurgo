@@ -70,10 +70,13 @@ export function pickFeatured(runs: RunSummary[]): RunSummary | null {
   );
 }
 
+/** A sweep tag ("v1", "v2.1") as "agent v1"; anything older ("0.1.0", "v1-2c") as "early build". The raw value stays in the run view's Identifiers. */
+export const agentLabel = (v: string) => (/^v\d+(\.\d+)?$/.test(v) ? `agent ${v}` : "early build");
+
 /** "Held-out set, agent v1": which evaluation set and agent produced a record, as far as it says. */
 export function runTag(r: Pick<RunSummary, "set" | "agent_version">): string | null {
   const set = r.set === "heldout" ? "Held-out set" : r.set === "dev" ? "Development repos" : null;
-  const agent = r.agent_version ? `agent ${r.agent_version}` : null;
+  const agent = r.agent_version ? agentLabel(r.agent_version) : null;
   return [set, agent].filter(Boolean).join(", ") || null;
 }
 
