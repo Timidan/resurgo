@@ -142,7 +142,7 @@ function Steps({ data }: { data: LandingData }) {
   return (
     <section className="mx-auto max-w-7xl space-y-24 px-4 py-28 sm:px-6">
       {items.map((it, i) => (
-        <div key={it.title} className="grid items-center gap-10 lg:grid-cols-2">
+        <div key={it.title} className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
           <Reveal className={cn(i % 2 && "lg:order-2")}>
             <AnimIcon name={it.icon} className="size-9 text-accent-strong" />
             <h2 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">{it.title}</h2>
@@ -215,7 +215,7 @@ function OpenARun({ data }: { data: LandingData }) {
       <Reveal>
         <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Don&apos;t take our word for it. Open a run.</h2>
       </Reveal>
-      <div className="mt-12 grid gap-6 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {cards.map((r, i) => {
           const file = r.patch_preview ? parsePatch(r.patch_preview)[0] : null;
           return (
@@ -260,7 +260,7 @@ function Problem({ data }: { data: LandingData }) {
           <h2 className="max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">Projects rot while you&apos;re not looking.</h2>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">Nothing in the repository changed. These are the real causes we recorded.</p>
         </Reveal>
-        <ol className="mt-14 grid gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-3" role="list">
+        <ol className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-3" role="list">
           {data.problems.map((p, i) => (
             <li key={p.key} className="bg-canvas">
               <Reveal delay={i * 0.12} className="flex h-full flex-col p-6">
@@ -348,7 +348,7 @@ function Artifacts({ data }: { data: LandingData }) {
             Agents can read it too: <a href="/index.md" className="font-semibold text-accent-strong underline underline-offset-4">the Agent view</a> describes the API and how runs are proved.
           </p>
         </Reveal>
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
+        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
           {cards.map((c, i) => (
             <Reveal key={c.title} delay={(i % 2) * 0.1}>
               <div className="flex h-full flex-col rounded-xl border border-border bg-canvas p-5">

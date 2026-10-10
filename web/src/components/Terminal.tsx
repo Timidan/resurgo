@@ -86,12 +86,12 @@ export function Terminal({
               </div>
               {r.note && <div className="pl-6 text-muted-foreground">{r.note}</div>}
               {shown.length > 0 && (
-                <pre className="m-0 mt-1 overflow-x-auto pl-6 text-muted-foreground">
+                <pre className="m-0 mt-1 pl-6 text-muted-foreground">
                   {shown.map((l, i) => (
                     <div
                       key={i}
                       className={cn(
-                        "whitespace-pre",
+                        "whitespace-pre-wrap break-words",
                         r.ok === false && ERROR_LINE.test(l) && "bg-highlight px-1 text-highlight-foreground",
                       )}
                     >

@@ -251,7 +251,7 @@ function RunBody({ d }: { d: RunDetail }) {
                   <p className="mb-4 mt-1 text-muted-foreground">
                     {fixLabel(s.fix_kind, s.needs_approval)} change, recorded as <span className="font-mono">fix.patch</span>.
                   </p>
-                  <div className="grid gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {patch.map((f) => <AIDiff key={f.title} title={f.title} lines={f.lines} />)}
                   </div>
                 </>
@@ -394,7 +394,7 @@ function RunBody({ d }: { d: RunDetail }) {
               A second container, built only from the recipe and the fix, ran these steps from a fresh clone.{" "}
               {r.verifier?.passed ? "Every step passed." : "At least one step failed."}
             </p>
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {verifierSteps.map((v, i) => (
                 <li key={i} className="rounded-lg border border-border bg-card p-4">
                   <p className="flex items-baseline justify-between gap-2 font-mono text-sm">

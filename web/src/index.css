@@ -226,14 +226,20 @@ body {
 }
 
 /* Scroll reveal: the same rise, driven by lib/inview.ts. --rd is the follow-through delay. */
+/* The sideways offset is capped at the page gutter (1rem, 1.5rem from 40rem), so an unrevealed
+   full-width block never sticks out past the viewport and makes the page scroll sideways. */
 .reveal {
+  --reach: 1rem;
   opacity: 0;
   transform: translateY(28px);
-  translate: var(--rx, -12px) 0;
+  translate: clamp(calc(-1 * var(--reach)), var(--rx, -12px), var(--reach)) 0;
   transition:
     opacity var(--dur-window) var(--ease-enter) var(--rd, 0s),
     transform var(--dur-window) var(--ease-enter) var(--rd, 0s),
     translate var(--dur-window) var(--ease-arc) var(--rd, 0s);
+}
+@media (min-width: 40rem) {
+  .reveal { --reach: 1.5rem; }
 }
 .reveal[data-in="true"] {
   opacity: 1;
