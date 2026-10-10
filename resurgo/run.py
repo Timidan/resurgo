@@ -62,8 +62,9 @@ def docker(*args, timeout=60):
 
 def exec_raw(container, cmd, data=None, timeout=120):
     """(exit code, stdout, stderr) of a command in the container; `data` goes to stdin."""
+    # input="" closes stdin at once; without it `exec -i` waits on the parent's stdin
     p = subprocess.run(["docker", "exec", "-i", "-u", "node", "-w", "/home/node", container,
-                        "bash", "-c", cmd], input=data, capture_output=True, text=True,
+                        "bash", "-c", cmd], input=data or "", capture_output=True, text=True,
                        errors="replace", timeout=timeout)
     return p.returncode, p.stdout, scrub(p.stderr)
 
