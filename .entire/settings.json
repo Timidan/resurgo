@@ -1,15 +1,10 @@
 {
   "enabled": true,
-  "telemetry": false,
-  "checkpoints": {
-    "primary": {
-      "type": "git-refs"
-    }
+  "strategy_options": {
+    "push_sessions": false
   },
+  "telemetry": false,
   "redaction": {
-    "betterleaks": {
-      "enabled": true
-    },
     "pii": {
       "enabled": true,
       "email": true,
@@ -17,6 +12,14 @@
     },
     "custom_redactions": {
       "ipv4": "\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b"
+    },
+    "betterleaks": {
+      "enabled": true
+    }
+  },
+  "checkpoints": {
+    "primary": {
+      "type": "git-refs"
     }
   }
 }
