@@ -47,17 +47,29 @@ Timidan (solo, with coding agents).
 
 - Not verified: whether the two build timeouts are the 2 CPU / 4 GB cap or something else (the cause was not isolated; the second feedbase run was made only to capture the output). The held-out set was not run. The neatlogs trace hierarchy is still unchecked in the UI.
 
+- Milestone 2c, ready for the held-out sweep. Node time cap is now 25 minutes; containers get 6 GB (2 CPUs unchanged) and build steps run with `NODE_OPTIONS=--max-old-space-size=4096`. Feedbase at 18dca32a923e, the repo that hit the old cap, now builds (agent 921s, verifier 732s) and ends `runs_with_gaps` because it has no test script. A `start` script that opens no port but is still alive after 30 seconds passes the serve step as a "service" (recorded as `proof.serve = "service"`; a process that exits fails as before). Writing it exposed a bug: a crashed server is reparented to the container's PID 1, which never reaps it, so `kill -0` saw it as alive; the probe now reads the process state. The service path was checked only against `sleep` processes in a throwaway container, not a real worker repo.
+- Rust pins: the toolchain-pin step runs as root in the build container before the user steps and installs the channel, components and targets from `rust-toolchain(.toml)` into the image's rustup home (the image tag is still chosen for numeric versions). Checked in a throwaway container with `nightly-2024-05-01` plus `rustfmt`; no repo in the dev set pins a toolchain, so it has not run on a real repo.
+- Sweep runner: `uv run python -m resurgo.sweep eval/heldout.json --agent-version v1 [--sweep-id ID]` runs repos one at a time as separate processes, tags each run with agent_version, set and sweep_id, rewrites `runs/sweeps/<id>/summary.json` and `summary.md` after each repo, and resumes by skipping repos already recorded under the id. `model_limited` is recorded and the sweep moves on. `eval/dev.json` has the seven development repos; `eval/heldout.json` has the 24 held-out repos copied from the plan table by script. The held-out set has not been run.
+- New development repos, run through the sweep runner (sweep `dev-2c`, tag `v1-2c`):
+
+| Repo | Type | Status | Proof steps | Time | Model calls |
+| --- | --- | --- | --- | --- | --- |
+| chroxify/feedbase (18dca32a923e) | monorepo | runs_with_gaps (no test script) | install, build | 2286s | 0 |
+| Timidan/NFTLIL (master b5ad8da536b6) | foundry | runs | forge build, forge test | 205s | 0 |
+| sharkdp/hexyl (master 6ecc29b9c8c8) | rust | runs | cargo build, cargo test | 350s | 0 |
+
+- Foundry and Rust now have one real passing run each; neither needed a fix, so the repair loop has not been exercised on them. Feedbase takes about 38 minutes in total (both containers), so a held-out sweep with several large monorepos will run for hours.
+
 ## Demo
 Not available yet.
 
 ## Known limitations and next steps
-- Foundry and Rust code paths are written and covered by a type-detection check only; no real Foundry or Rust run yet.
-- A repo with a `start` script is treated as a web app even when it is a worker with no HTTP port (agent-arena `commentator`); it ends as `broken` at serve.
+- Foundry and Rust each have one real run that passed without a fix; the repair loop has not run on either.
+- A `start` script that opens no port passes as a "service" after 30 seconds alive, which is a weaker proof than GET /; a web app that takes longer than 30 seconds to open its port would be recorded as a service.
 - Monorepos get the library proof bar (install, build, test); their apps are not started.
-- A rust-toolchain pin different from the image's toolchain cannot be installed (the toolchain directory is read-only for the non-root user).
 - The patch is cumulative: edits from failed attempts stay in it. Reverting them before the final diff is not done.
 - Reruns always start from install. Lockfile regeneration (an empty-content lockfile entry) and npm pins are implemented but have not been exercised on a real repo.
-- The 15-minute budget covers the fix loop, not the verifier. Many per-file `docker exec` calls on the remote host made runs slow before reads were batched.
+- The 25-minute Node budget covers the fix loop, not the verifier. Many per-file `docker exec` calls on the remote host made runs slow before reads were batched.
 - The `resurgo-runs` network is created if missing and left in place after runs.
 
 ## Submission
