@@ -1,0 +1,55 @@
+You are building Resurgo during neatHack. Read hackathon.md, docs/PLAN.md and resurgo/run.py first. This task adds the pull-request step. After a fix passes in the clean container, the "Resurgo Agent" GitHub App opens a pull request containing exactly that fix. Keep it small and readable.
+
+**Scope: one new module, `resurgo/pr.py`, and one small test, `resurgo/test_pr.py`.** Do not edit `run.py`, `sweep.py`, `agent.py`, `pyproject.toml` or `uv.lock`, because a sweep is running on those files elsewhere. Add no new dependencies; httpx and python-dotenv are already installed.
+
+Usage: `uv run python -m resurgo.pr <run dir> [--dry-run]`, for example `runs/20261010T103641Z-f6fc324`.
+
+1. **Guards: one pure function.** `refusal(record, patch, run_sha, head_sha, existing_pr)` returns a reason string, or None if the PR may be opened. It refuses when:
+   - `record["verifier"]["passed"]` is not `True`. Old records have `result: "fixed"` and no `fixed` key, so don't gate on those fields.
+   - `fix.patch` is missing or empty.
+   - The run's commit is no longer the head of the default branch. The reason says to re-run first.
+   - A pull request from branch `resurgo/fix-<run_id>` already exists, in any state. The reason includes its URL.
+2. **Resolve the commit.** Old records store a 12-character SHA, and GitHub won't fetch a commit by an abbreviated SHA. Get the full SHA from `GET /repos/{repo}/commits/{sha}`. Get the default branch from `GET /repos/{repo}` and its head from `GET /repos/{repo}/branches/{branch}`.
+3. **Dry run (`--dry-run`).** Use only the public API, with no key and no push. Run the guards and print the PR title and body. This is how each PR gets approved before it's opened.
+4. **App auth, real run only.** Read `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_PRIVATE_KEY` (a file path) from the environment, loading it with `load_dotenv()` as run.py does. Never read or print the key file yourself.
+   - JWT: RS256, signed by running `openssl dgst -sha256 -sign <key path>` via subprocess (no PyJWT). Claims: `iat` = now − 60, `exp` = now + 540, `iss` = the Client ID. Encode as base64url without padding.
+   - Call `GET /repos/{repo}/installation` with the JWT. A 404 means the App isn't installed on that repo: refuse with "Resurgo Agent is not installed on <repo>". This is also the guard against repos we don't own.
+   - Call `POST /app/installations/{id}/access_tokens` with `{"repositories": ["<name>"], "permissions": {"contents": "write", "pull_requests": "write"}}`.
+   - Use the installation token for every later API call. Never print or log the JWT or the token.
+5. **Branch and commit, real run only.** Work in a temporary directory:
+   - Run `git init -q`, then `git fetch -q --depth 1 https://github.com/<repo>.git <full sha>`, then `git checkout -q FETCH_HEAD`.
+   - Run `git apply` with the run's `fix.patch`, then `git add -A`.
+   - Commit as `resurgo-agent[bot]` with email `340643390+resurgo-agent[bot]@users.noreply.github.com`.
+   - Push to `refs/heads/resurgo/fix-<run_id>`.
+   - Credentials: the server's git is 2.30, so pass the token through a credential helper that reads it from an environment variable. Put `-c credential.helper=` first to clear any global helper. The token must never appear in argv, the remote URL or `.git/config`. Set `GIT_TERMINAL_PROMPT=0`.
+   - The commit and the PR contain **exactly** `fix.patch`. Don't generate a Dockerfile or check script, because the verifier never ran one.
+   - Commit message: what changed and why, taken from the record. No tool attribution.
+6. **Open the PR.** Call `POST /repos/{repo}/pulls` with base = the default branch, head = `resurgo/fix-<run_id>` and `maintainer_can_modify: true`. Write `{"url", "number"}` back into `result.json` under the key `pr`. Print the URL.
+7. **Title and body, from the record only.** Don't add a trace link, an image name or anything else the record doesn't contain.
+   - Title: deterministic, built from the failing step and the changed files, for example "Fix fresh-clone install: commentator/.nvmrc".
+   - Body sections:
+     - **What broke:** the first failing agent step (name, command, exit code), with the last 15 lines or so of its output in a `<details>` block.
+     - **Why:** the `rationale` of the winning attempt.
+     - **The fix:** the files changed, and whether it's a config or a code change (from the attempt's `kind`).
+     - **Proof:** a table of the verifier steps (step, exit code, duration). Then the line "A separate clean container cloned <short sha>, applied only this change, and ran these steps." Then the exact commands in a `<details>` block, so anyone can reproduce the check.
+     - **Attempts:** how many it took, with one line per earlier failed attempt (files changed, result).
+     - The project path, if `path` is set.
+     - **Run record:** `https://resurgo.timidan.xyz/runs/<run_id>`.
+     - Closing line: Resurgo never pushes to the default branch and never merges.
+   - Keep the body short, plain and specific.
+8. **Test.** In `resurgo/test_pr.py`, write one test for `refusal()`. A good record passes. A failed verifier, an empty patch, a moved head and an existing PR are each refused. Run it together with the existing tests: `uv run --with pytest pytest -q resurgo`.
+9. **Check.** Run `--dry-run` on two real records:
+   - `runs/20261010T103641Z-f6fc324` (Timidan/agent-arena)
+   - `runs/20261010T120139Z-5c3370f` (Timidan/rinne)
+
+   Both should pass the guards today. Paste both rendered titles and bodies into your report. Never run without `--dry-run`: the App key isn't on this machine, and opening a PR needs the owner's approval.
+
+Commit in small steps and add a short entry to hackathon.md.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- Never print secrets or server addresses.
+- Never open pull requests.
+- No tool or AI attribution in commits.
+- Finish with a short report: what you built, both dry-run outputs, the test results, and anything you weren't sure about.
