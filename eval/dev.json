@@ -43,6 +43,16 @@
       "branch": "master",
       "sha": "6ecc29b9c8c8",
       "role": "Development"
+    },
+    {
+      "repo": "coderbuzz/zh",
+      "sha": "ca0e65ea04517752c8e0037ed0bac146fec2bb2c",
+      "role": "Development"
+    },
+    {
+      "repo": "inixiative/template",
+      "sha": "5aa4f850d12f27065e9dba7e1adcaf6131a91570",
+      "role": "Development"
     }
   ]
 }
