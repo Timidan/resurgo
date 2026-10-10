@@ -150,7 +150,7 @@ export default function Runs() {
                   </span>
                   <StatusBadge status={r.status} className="self-start" />
                   <span className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
-                    <span>{fmtDur(r.duration_s)}</span>
+                    {r.duration_s != null ? <span>{fmtDur(r.duration_s)}</span> : null}
                     {tag && <span>{tag}</span>}
                     {r.started ? <span>{fmtWhen(r.started)}</span> : null}
                   </span>
