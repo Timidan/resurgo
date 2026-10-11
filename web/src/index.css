@@ -403,6 +403,28 @@ p { text-wrap: pretty; }
   100% { translate: 0 0; }
 }
 
+/* In-place expand: the row track opens on the enter easing. Hidden content is not focusable. */
+.fold {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 0fr;
+  visibility: hidden;
+}
+.fold[data-open="true"] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fold {
+    transition:
+      grid-template-rows var(--dur-chip) var(--ease-enter),
+      visibility 0s linear var(--dur-chip);
+  }
+  .fold[data-open="true"] {
+    transition: grid-template-rows var(--dur-chip) var(--ease-enter), visibility 0s;
+  }
+}
+
 /* Route change: the new page rises in. */
 .route-enter {
   animation: route-in 260ms var(--ease-enter) backwards;
