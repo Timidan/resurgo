@@ -14,7 +14,7 @@ import { AgentOrb, Eyebrow, Mark, Reveal, StatusBadge } from "@/components/ui-bi
 import type { RunDetail, RunSummary, Step } from "@/lib/api";
 import { fixLabel, fmtDur, isShowable, parsePatch, STATUS_ORDER, statusMeta, stepOk } from "@/lib/run";
 import { cn, INSTALL_URL } from "@/lib/utils";
-import { useLandingData, type LandingData, type StatGroup } from "./landing-data";
+import { PRICING, useLandingData, type LandingData, type StatGroup } from "./landing-data";
 
 const LABEL = "font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground";
 
@@ -528,6 +528,61 @@ function Toolchains() {
   );
 }
 
+/* 10b. Pricing ------------------------------------------------------------- */
+function Pricing() {
+  const p = PRICING;
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6" aria-label="Pricing">
+      <Reveal>
+        <Eyebrow>{p.eyebrow}</Eyebrow>
+        <h2 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">{p.heading}</h2>
+        <p className="mt-5 max-w-2xl text-lg text-muted-foreground">{p.intro}</p>
+
+        <ul className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2" role="list">
+          {p.plans.map((plan) => (
+            <li key={plan.name} className="min-w-0 rounded-xl border border-border bg-panel p-6">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                <h3 className="text-xl font-semibold">{plan.name}</h3>
+                {plan.recommended && <span className={LABEL}>{p.recommendedLabel}</span>}
+              </div>
+              <p className="mt-4 flex flex-wrap items-baseline gap-x-3">
+                <span className="font-mono text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl">{plan.price}</span>
+                {plan.unit && <span className="text-muted-foreground">{plan.unit}</span>}
+              </p>
+              <p className="mt-3 text-muted-foreground">{plan.body}</p>
+            </li>
+          ))}
+        </ul>
+
+        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4">
+          {p.figures.map((f) => (
+            <div key={f.value} className="min-w-0 bg-canvas p-5 sm:p-6">
+              <dt className="font-mono text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl">{f.value}</dt>
+              <dd className="mt-2 text-sm text-muted-foreground">{f.label}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <p className="mt-4 text-sm text-muted-foreground">{p.caveat}</p>
+        <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+          <Logo name="cfo" size="36px" className="text-foreground" />
+          <span>
+            {p.source}{" "}
+            <a
+              href={p.linkHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-accent-strong underline underline-offset-4"
+            >
+              {p.linkLabel}
+            </a>
+          </span>
+        </p>
+      </Reveal>
+    </section>
+  );
+}
+
 /* 11. Final CTA ------------------------------------------------------------ */
 function Closing({ data }: { data: LandingData }) {
   const history = [...data.runs].filter((r) => r.status !== "checking").reverse();
@@ -612,6 +667,7 @@ export default function Landing() {
       <Safe label="The solution section"><Solution data={data} /></Safe>
       <Safe label="The run artifacts"><Artifacts data={data} /></Safe>
       <Toolchains />
+      <Safe label="The pricing section"><Pricing /></Safe>
       <Safe label="The run history"><Closing data={data} /></Safe>
     </main>
   );

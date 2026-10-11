@@ -64,6 +64,35 @@ const PROBLEM_COPY: Record<string, { title: string; body: string }> = {
   },
 };
 
+/** Pricing section copy: the numbers are the cfo.ai plan's, built from Resurgo's measured runs. */
+export const PRICING = {
+  eyebrow: "Pricing",
+  heading: "Priced from what a check costs to run.",
+  intro:
+    "Nothing is billed today. This is the pricing the cfo.ai plan recommends, worked out from Resurgo's measured runs.",
+  plans: [
+    { name: "Free", price: "$0", unit: null, body: "Weekly checks on up to 3 public repositories.", recommended: false },
+    {
+      name: "Team",
+      price: "$12",
+      unit: "per account, per month",
+      body: "Nightly checks and verified-fix pull requests on up to 10 repositories.",
+      recommended: true,
+    },
+  ],
+  recommendedLabel: "Recommended by the plan",
+  figures: [
+    { value: "$0.0112", label: "to run one check: compute plus a model-call ceiling" },
+    { value: "$3.35", label: "a month to serve a full 10-repo account" },
+    { value: "66.7%", label: "gross margin after payment fees" },
+    { value: "3", label: "paying accounts to break even on one $7 server, with 25 free" },
+  ],
+  caveat: "The plan assumes 10–40% of broken repos get a verified fix. Agent v1 fixed 1 of 11 on the held-out set.",
+  source: "Plan built with Ari in cfo.ai.",
+  linkLabel: "Read the plan",
+  linkHref: "https://cfo.ai/s/pDpH9dFTal4PAy76",
+} as const;
+
 /** First run (newest first) that evidences each cause. The server did the matching. */
 function findProblems(runs: RunSummary[]): Problem[] {
   return (["toolchain", "runtime", "clock"] as const).flatMap((key) => {
