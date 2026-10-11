@@ -160,19 +160,26 @@ def proposal_problem(box, proposal):
     return None, weak, code
 
 
-def code_problem(box, proposal):
-    """Why a code proposal must not be applied: too unsure, or it guts a source file (loses more
-    than half of its non-blank lines and more than GUT_LINES of them). None when it is fine."""
-    if proposal["confidence"] < MIN_CODE_CONFIDENCE:
-        return "confidence too low for a code change"
+def shrink_problem(box, proposal):
+    """Why a proposal guts a file it rewrites: the file loses more than half of its non-blank lines
+    and more than GUT_LINES of them. Applies to config and code alike (a config file such as
+    .env.example stripped of its comments is as unreviewable as gutted code); lockfiles are
+    regenerated whole and deletions are judged elsewhere. None when it is fine."""
     for f in proposal["files"]:
-        if f["path"].rsplit("/", 1)[-1] in LOCKFILE_NAMES | CONFIG_NAMES:
+        if f["path"].rsplit("/", 1)[-1] in LOCKFILE_NAMES or f["content"] == "":
             continue
         old = sum(1 for l in (box.read(f["path"]) or "").splitlines() if l.strip())
         new = sum(1 for l in f["content"].splitlines() if l.strip())
         if old - new > GUT_LINES and new < old / 2:
             return f"this removes most of a file: {f['path']} goes from {old} to {new} lines"
     return None
+
+
+def code_problem(box, proposal):
+    """Why a code proposal must not be applied: too unsure, or it guts a file. None when fine."""
+    if proposal["confidence"] < MIN_CODE_CONFIDENCE:
+        return "confidence too low for a code change"
+    return shrink_problem(box, proposal)
 
 
 def error_line(out):
@@ -305,10 +312,9 @@ def build_graph(box, model, deadline):
             return proposal, malformed, False
         if weak:
             return proposal, f"this skips or weakens tests: {weak}", True
-        if proposal["kind"] == "code" or code:
-            guard = code_problem(box, proposal)
-            if guard:
-                return proposal, guard, True
+        guard = code_problem(box, proposal) if proposal["kind"] == "code" or code else shrink_problem(box, proposal)
+        if guard:
+            return proposal, guard, True
         return {**proposal, "code_reason": code}, None, False
 
     def propose(state, config: RunnableConfig):

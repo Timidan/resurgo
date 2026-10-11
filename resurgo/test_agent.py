@@ -1,7 +1,7 @@
 import json
 from types import SimpleNamespace
 
-from resurgo.agent import build_graph, code_problem, error_line, proposal_problem
+from resurgo.agent import build_graph, code_problem, error_line, proposal_problem, shrink_problem
 
 
 class FakeBox:
@@ -180,3 +180,12 @@ def test_graph_search_skips_silently_on_failure():
     ok = box_with(lambda cmd, data=None, timeout=120: (0, "Index: 1ms\nsrc/a.ts:3-9 f s=1\nbody\n", ""))
     got = ok.graph_search("test fails: x")
     assert got["files"] == ["src/a.ts:3-9"] and "Index:" not in got["text"]
+
+
+def test_shrink_guard_covers_config_files():
+    env = "\n".join(f"# comment {i}\nKEY{i}=value" for i in range(20))
+    box = FakeBox("serve", {".env.example": env})
+    stripped = "\n".join(f"KEY{i}=value" for i in range(16))
+    assert "removes most of a file" in shrink_problem(box, {"kind": "config", "files": [{"path": ".env.example", "content": stripped}]})
+    one_line = env.replace("KEY3=value", "KEY3=./data/db.sqlite")
+    assert shrink_problem(box, {"kind": "config", "files": [{"path": ".env.example", "content": one_line}]}) is None
