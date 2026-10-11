@@ -87,19 +87,19 @@ Also used: **LangGraph** (the repair loop), **FastAPI** (the runs API and the si
 ## How it works
 
 ```mermaid
-flowchart LR
-  T["Trigger<br/>App install · sweep"] --> A["Agent container<br/>fresh clone, pinned commit"]
-  A --> S["Steps<br/>install → build → test → serve"]
-  S -- a step fails --> R["Repair<br/>rules first, then the model<br/>with entire graph context"]
+flowchart TB
+  T["Trigger: an App install or a sweep"] --> A["Agent container: fresh clone at a pinned commit"]
+  A --> S["Steps: install → build → test → serve"]
+  S -- "a step fails" --> R["Repair: rules first, then the model, with entire graph context"]
   R --> G{"Guard"}
-  G -- "weakens tests · guts a file<br/>low-confidence code" --> R
-  G -- accepted --> S
-  S -- all pass --> V["Verifier<br/>clean container + fix.patch<br/>re-runs every step"]
-  V -- fails --> B["Broken<br/>recorded with the reason"]
+  G -- "refused: weakens tests, guts a file, low-confidence code" --> R
+  G -- "accepted: apply and run again" --> S
+  S -- "every step passes" --> V["Verifier: clean container + fix.patch, every step again"]
+  V -- fails --> B["Broken, recorded with the reason"]
   V -- passes --> K{"What changed?"}
   K -- nothing --> OK["Runs as is"]
-  K -- config --> P["Pull request<br/>from resurgo-agent[bot]"]
-  K -- code --> H["Held for the<br/>owner's approval"]
+  K -- config --> P["Pull request from resurgo-agent[bot]"]
+  K -- code --> H["Held for the owner's approval"]
 ```
 
 1. **Trigger.** Installing the GitHub App queues a check of the chosen repositories: public ones, up to 5, with up to 3 project paths each. The worker runs them one at a time and re-checks an installation weekly. Sweeps run the same check over a fixed list (`eval/*.json`).
@@ -184,23 +184,18 @@ The build log, decision by decision, is [hackathon.md](hackathon.md).
 
 ```mermaid
 flowchart TB
-  GH["GitHub<br/>Resurgo Agent app"] -->|install callback| API
-
-  subgraph WEB["resurgo-web container"]
-    API["FastAPI<br/>runs API · install callback"] --- UI["React site<br/>web/dist"]
-  end
-
-  API -->|"queue/requests"| W["resurgo.worker"]
-  W -->|"queue/status"| API
-  W --> RUN["resurgo.run"]
-  SW["resurgo.sweep<br/>eval/*.json"] --> RUN
+  GH["GitHub App install"] -->|install callback| SITE["resurgo-web container<br/>FastAPI runs API + React site"]
+  SITE -->|queue/requests| W["resurgo.worker"]
+  SW["resurgo.sweep<br/>eval/*.json"] --> RUN["resurgo.run"]
+  W --> RUN
   RUN -->|docker| AC["Agent container<br/>steps · repair · entire graph"]
-  RUN -->|docker| VC["Verifier container<br/>clean rebuild"]
+  RUN -->|docker| VC["Verifier container<br/>clean rebuild with fix.patch"]
   RUN -->|diagnose · propose| M[("Model gateway")]
   RUN -->|spans| NL[("neatlogs")]
   RUN --> REC[("runs/&lt;run id&gt;<br/>result.json · fix.patch")]
-  REC -->|read-only| API
-  PR["resurgo.pr"] -->|verified config fix| GH
+  REC -->|read-only| SITE
+  REC --> PR["resurgo.pr"]
+  PR -->|verified config fix| GHPR["Pull request<br/>resurgo-agent[bot]"]
 ```
 
 - **Containers do the work.** Each check starts an agent and a verifier container on a Docker host, labelled with the run ID and removed when the run ends. Each gets 2 CPUs, 6 GB of memory and 512 processes, with every capability dropped and `no-new-privileges`.
