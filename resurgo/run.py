@@ -97,7 +97,7 @@ def step(name, container, cmd, timeout, home=NODE_HOME, user="1000:1000"):
     return rec, out
 
 
-ENTIRE_BIN = "/home/agentops/.local/bin/entire"   # on the Docker host; RESURGO_ENTIRE_BIN overrides
+ENTIRE_BIN = ""   # path to the entire binary on the Docker host, set with RESURGO_ENTIRE_BIN; empty skips the mount
 GRAPH_BYTES, GRAPH_TIMEOUT, GRAPH_TOP_K = 12_000, 120, 5
 GRAPH_PLUGIN_BIN = "~/.local/share/entire/plugins/pkg/graph/entire-graph"   # RESURGO_ENTIRE_GRAPH_BIN
 GRAPH_NOISE =("Index:", "Coverage:", "- warning")
