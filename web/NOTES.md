@@ -27,7 +27,7 @@ For front-end work: `npm run dev --prefix web` (Vite proxies `/api` to 127.0.0.1
 - **Trace id**: result.json has no trace id yet, so the run view says "not recorded for this run". If the runner adds a `trace_id` field it shows up automatically.
 - **Problem section** uses three causes found in the real records: pnpm `ERR_PNPM_IGNORED_BUILDS`, the agent's own diagnosis of a native module vs Node 24, and a build that hit the time cap. The "build-time API host disappeared" cause in LANDING.md has no evidence in our runs, so it is not claimed.
 - **Replay** plays the recorded steps and model calls back from `result.json`; nothing is re-executed. With `prefers-reduced-motion` it jumps straight to the verdict.
-- **Orb**: one orb, paused unless the replay is at a model call.
+- **Orb**: one orb, always moving. At rest it is SiriOrb's `idle` state (slow rotation, drift and breathing), `thinking` is faster, `error` is unchanged. Reduced motion holds it still through SiriOrb's own `useReducedMotion` path.
 
 ## Components
 
@@ -156,3 +156,13 @@ Not done / limits:
 - **Repo box** is "Find a repository in the gallery". **Run it yourself** links to the README section.
 - **Touch**: `pointer-coarse:` raises header links, install, theme toggle and copy to 44 px.
 - **Checked repositories** (landing): a 1/2/3-column grid of cells (name, status badge, duration), the first 12 shown, the rest behind a "Show all N repositories" button (N from the data, `aria-expanded`, same button keeps focus). The expand is a `.fold` row-track transition on `--ease-enter`/`--dur-chip`, none under reduced motion; folded cells are `visibility: hidden`, so not focusable. A summary line counts runs per status with the badges' own word and glyph (`STATUS_ORDER` in `lib/run.ts`).
+
+## Shader background
+
+- **What**: `components/shader-bg.tsx` (`ShaderBackdrop`, mounted in `BackgroundArt` at every width) draws a `shaders@4.0.4` (pinned) WebGPU field behind the site; `shader-layer.tsx` holds the four shortlisted fields and is lazy-loaded (its chunk is about 2.5 MB, 713 kB gzipped, fetched only when `navigator.gpu` exists). The hairline grid and the 1500 px margin mark are unchanged.
+- **Choice**: `MeshGradient` on white / accent / evidence stops. Alternatives are one word away: `BACKDROP` in `shader-bg.tsx` (`mesh`, `flow`, `noise`, `fog`), or `VITE_BACKDROP=<name>` at build time.
+- **Colours** are read from `--canvas`, `--accent`, `--evidence` at runtime and re-read on theme change. They are kept on the safe side of the canvas's luminance (never darker in light mode, never lighter in dark mode), so text contrast over the field is at least what it is over the flat canvas. A mask thins it toward the left, where the hero text is.
+- **Fallback**: no `navigator.gpu`, or the engine's `onUnavailable` fires, shows the old CSS accent pool. A pre-check with `requestAdapter()` was tried and removed: it returns null transiently right at page start under swiftshader and would have made the fallback permanent.
+- **Performance**: the canvas is rendered smaller and scaled up so it never exceeds 1.5 device pixels per CSS pixel; the host gets `display: none` while the tab is hidden (the engine stops its loop when the canvas has no box); telemetry is off (`disableTelemetry`).
+- **Reduced motion**: speed 0, one frame drawn, snapshotted to an `<img>` and the renderer unmounted. If the snapshot is blank the live canvas (at speed 0) stays. A theme change draws a new frame.
+- **Testing WebGPU here**: headless Chromium does not composite WebGPU canvases into screenshots (even a trivial one). Headed Chromium on Xvfb with `--enable-unsafe-webgpu --enable-features=Vulkan --use-angle=swiftshader` does. `check-render.mjs` runs headless without WebGPU, so it covers the fallback only.

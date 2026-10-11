@@ -13,7 +13,7 @@ Source: John Lasseter, "Principles of Traditional Animation Applied to 3D Comput
 7. **Slow in and slow out.** Entrances share one easing, for example `cubic-bezier(.22,1,.36,1)`, and exits use a gentler one. Nothing moves linearly except timers, progress and spinner rotation.
 8. **Arcs.** Moving elements travel on slight curves (X and Y with different easings), not straight diagonals. The orb drifts on an arc.
 9. **Exaggeration.** Push only the key moments. The failing ✗ line flashes red once for 300 ms, the winning fix line gets one quick lemon sweep, and the verdict alone gets a scale overshoot. Everything else stays calm.
-10. **Secondary action.** It supports the main action and never competes with it. The orb breathes only while the model is thinking, the cursor blinks, timers tick, and tile status dots pulse softly. All of these pause when the primary action needs attention.
+10. **Secondary action.** It supports the main action and never competes with it. The orb breathes slowly at rest and churns faster while the model is thinking, the cursor blinks, timers tick, and tile status dots pulse softly. All of these pause when the primary action needs attention.
 11. **Appeal.** Aim for clarity and personality: legible type, generous spacing, honest data and a steady rhythm. The agent should feel calm and competent, with one small flourish at the win: the lifted-r mark gives a short "lift" when a run verifies.
 
 Also:
