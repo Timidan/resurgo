@@ -103,6 +103,8 @@ export type RunSummary = {
   sweep_id?: string | null;
   /** The patch only skipped tests (see api/main.py `_weakens_tests`). */
   weakens_tests?: boolean;
+  /** The owner's verdict on a code fix, from runs/reviews.json (see api/main.py `_reviews`). */
+  review?: { verdict: "approved" | "rejected"; reason: string; reviewed_at: string | null } | null;
   verified?: boolean;
   gaps?: string[];
   agent_steps?: StepBrief[];

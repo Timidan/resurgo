@@ -571,7 +571,7 @@ function Closing({ data }: { data: LandingData }) {
             ))}
           </ol>
           <p className="mt-3 flex flex-wrap gap-x-5 font-mono text-xs text-muted-foreground">
-            {["runs", "runs_with_gaps", "fixed", "fix_awaiting_approval", "fix_skipped_tests", "broken"].map((k) => {
+            {["runs", "runs_with_gaps", "fixed", "fix_awaiting_approval", "fix_skipped_tests", "fix_rejected_on_review", "broken"].map((k) => {
               const m = statusMeta(k);
               return <span key={k} className={m.text}>{m.glyph} {m.word}</span>;
             })}

@@ -25,8 +25,19 @@ BOT_EMAIL = "340643390+resurgo-agent[bot]@users.noreply.github.com"
 OUTPUT_LINES = 15
 
 
-def refusal(record, patch, run_sha, head_sha, existing_pr):
+def review_of(run_dir, run_id):
+    """The owner's review of this run from runs/reviews.json, or {}."""
+    try:
+        data = json.loads((Path(run_dir).parent / "reviews.json").read_text())
+        return data.get(run_id) or {}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def refusal(record, patch, run_sha, head_sha, existing_pr, review=None):
     """A reason the pull request must not be opened, or None."""
+    if (review or {}).get("verdict") == "rejected":
+        return "the owner rejected this fix on review"
     if (record.get("verifier") or {}).get("passed") is not True:
         return "the verifier did not pass for this run"
     if record.get("needs_approval"):
@@ -186,7 +197,7 @@ def main():
     prs = api("GET", f"/repos/{repo}/pulls", params={"head": f"{repo.split('/')[0]}:{branch}", "state": "all"}).json()
     existing = prs[0]["html_url"] if prs else None
 
-    reason = refusal(record, patch, full_sha, head_sha, existing)
+    reason = refusal(record, patch, full_sha, head_sha, existing, review_of(run_dir.resolve(), run_id))
     if reason:
         sys.exit(f"refusing: {reason}")
 

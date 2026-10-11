@@ -17,6 +17,7 @@ const STATUS_CHIPS: { key: string; label: string; test: (s: string) => boolean }
   { key: "gaps", label: "Gaps", test: (s) => s === "runs_with_gaps" },
   { key: "approval", label: "Awaiting approval", test: (s) => s === "fix_awaiting_approval" },
   { key: "skipped", label: "Skipped tests", test: (s) => s === "fix_skipped_tests" },
+  { key: "rejected", label: "Rejected", test: (s) => s === "fix_rejected_on_review" },
 ];
 
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: string }) {

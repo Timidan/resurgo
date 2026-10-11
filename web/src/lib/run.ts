@@ -22,6 +22,8 @@ const STATUS: Record<string, StatusMeta> = {
   },
   // The patch only excluded tests. Styled like broken: it is not a repair.
   fix_skipped_tests: { word: "Fix skipped tests · not a repair", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
+  // The owner reviewed the fix and rejected it (runs/reviews.json). Styled like broken.
+  fix_rejected_on_review: { word: "Fix rejected on review", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   broken: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   fail: { word: "Broken", glyph: "✗", tone: T_BROKEN, text: "text-broken" },
   // Only a record with no verifier steps at all lands here (see api/main.py).
@@ -58,8 +60,9 @@ export const fixLabel = (kind: string | null, needsApproval: boolean) =>
 
 export const stepOk = (s: Step) => s.exit_code === 0;
 
-/** A run that may be shown as an example: it has a record and its fix did not just skip tests. */
-export const isShowable = (r: RunSummary) => r.status !== "checking" && r.status !== "fix_skipped_tests" && !r.weakens_tests;
+/** A run that may be shown as an example: it has a record, its fix did not just skip tests and the owner did not reject it. */
+export const isShowable = (r: RunSummary) =>
+  r.status !== "checking" && r.status !== "fix_skipped_tests" && r.status !== "fix_rejected_on_review" && !r.weakens_tests;
 
 /** Latest verified run, preferring a config fix, then any fix; otherwise the latest showable run. */
 export function pickFeatured(runs: RunSummary[]): RunSummary | null {

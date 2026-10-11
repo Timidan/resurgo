@@ -117,7 +117,7 @@ export function Story({
   const repoMeta = f.repoState === "final" ? meta : f.repoState === "broken" ? broken : checking;
   const repoWord = f.repoState === "broken" ? "Broken from a fresh clone" : repoMeta.word;
   const awaiting = s.status === "fix_awaiting_approval";
-  const verified = s.verified && !awaiting && s.status !== "fix_skipped_tests"; // a clean pass; neither is an awaiting or a test-skipping fix
+  const verified = s.verified && !awaiting && s.status !== "fix_skipped_tests" && s.status !== "fix_rejected_on_review"; // a clean pass; none of these is
   const dim = (i: number) => f.focus >= 0 && f.focus !== i;
 
   // While this story plays its primary beat, secondary actions on the page hold still.

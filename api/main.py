@@ -72,6 +72,25 @@ def _verified(result: dict) -> bool:
     return bool(steps) and (verifier.get("passed") is True or all(s.get("exit_code") == 0 for s in steps))
 
 
+def _reviews() -> dict[str, dict]:
+    """The owner's verdicts from RUNS_DIR/reviews.json, {run_id: {verdict, reason, reviewed_at}}. Read on
+    every request (the file is small); a missing or malformed file means no verdicts."""
+    try:
+        data = json.loads((_runs_dir() / "reviews.json").read_text())
+    except (OSError, ValueError, HTTPException):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(v, dict) and v.get("verdict") in ("approved", "rejected")}
+
+
+def _review(reviews: dict[str, dict], run_id: str) -> dict | None:
+    r = reviews.get(run_id)
+    if not r:
+        return None
+    return {"verdict": r["verdict"], "reason": r.get("reason") or "", "reviewed_at": r.get("reviewed_at")}
+
+
 _DIFF_HEADER = re.compile(r"^diff --git a/(.+?) b/(.+)$")
 _TEST_KEY = re.compile(r"^\+\s*(?:no_)?match_\w+\s*=")
 _TEST_SCRIPT = re.compile(r'^[+-]\s*"test"\s*:')
@@ -97,8 +116,11 @@ def _weakens_tests(patch: str | None) -> bool:
     return False
 
 
-def _status(result: dict, weakens_tests: bool = False) -> str:
+def _status(result: dict, weakens_tests: bool = False, review: dict | None = None) -> str:
     status = _judge(result)
+    # The owner's rejection outranks whatever the clean container said.
+    if review and review["verdict"] == "rejected":
+        return "fix_rejected_on_review"
     # A fix that only skipped tests is not a repair, whatever the clean container then said.
     return "fix_skipped_tests" if weakens_tests and status != "broken" else status
 
@@ -176,7 +198,7 @@ def _brief(step: dict) -> dict:
     return {"name": step.get("name"), "ok": step.get("exit_code") == 0, "duration_s": step.get("duration_s")}
 
 
-def _summary(run_id: str, result: dict, patch: str | None) -> dict:
+def _summary(run_id: str, result: dict, patch: str | None, review: dict | None = None) -> dict:
     started, ended = result.get("started"), result.get("ended")
     agent = result.get("agent") or {}
     verifier = result.get("verifier") or {}
@@ -190,7 +212,8 @@ def _summary(run_id: str, result: dict, patch: str | None) -> dict:
         "sha": result.get("sha"),
         "path": result.get("path") or "",
         "type": result.get("type"),
-        "status": _status(result, weakens),
+        "status": _status(result, weakens, review),
+        "review": review,
         "set": result.get("set"),
         "agent_version": result.get("agent_version"),
         "sweep_id": result.get("sweep_id"),
@@ -201,7 +224,7 @@ def _summary(run_id: str, result: dict, patch: str | None) -> dict:
         "needs_approval": bool(result.get("needs_approval")),
         "started": started,
         # What the landing page draws from, so it does not fetch every run's record.
-        "verified": _verified(result),
+        "verified": _verified(result) and not (review and review["verdict"] == "rejected"),
         "gaps": result.get("gaps") or verifier.get("gaps") or [],
         "agent_steps": [_brief(s) for s in _steps(agent)],
         "verifier_steps": [_brief(s) for s in _steps(verifier)],
@@ -229,7 +252,7 @@ def _summary(run_id: str, result: dict, patch: str | None) -> dict:
 def _checking_row(entry: Path) -> dict:
     return {"id": entry.name, "repo": None, "sha": None, "path": "", "type": None, "status": "checking",
             "set": None, "agent_version": None, "sweep_id": None, "weakens_tests": False,
-            "duration_s": None, "model_calls": 0, "fix_kind": None, "needs_approval": False,
+            "duration_s": None, "model_calls": 0, "fix_kind": None, "needs_approval": False, "review": None,
             "started": entry.stat().st_mtime, "verified": False, "gaps": [], "agent_steps": [],
             "verifier_steps": [], "attempts": [], "rules_fired": [], "model": None, "model_seconds": None,
             "error_line": None, "problems": [], "patch_preview": None, "patch_added": 0}
@@ -238,6 +261,7 @@ def _checking_row(entry: Path) -> dict:
 def _rows() -> list[dict]:
     root = _runs_dir()
     now = time.time()
+    reviews = _reviews()
     rows = []
     for entry in root.iterdir():
         if not RUN_ID.fullmatch(entry.name) or not entry.is_dir() or entry.resolve().parent != root:
@@ -248,7 +272,7 @@ def _rows() -> list[dict]:
                 patch = (entry / "fix.patch").read_text()
             except OSError:
                 patch = None
-            rows.append(_summary(entry.name, result, patch))
+            rows.append(_summary(entry.name, result, patch, _review(reviews, entry.name)))
         elif now - entry.stat().st_mtime < CHECKING_WINDOW_S:
             rows.append(_checking_row(entry))
     rows.sort(key=lambda r: r["id"], reverse=True)
@@ -271,7 +295,8 @@ def get_run(run_id: str) -> dict:
         patch = (run_dir / "fix.patch").read_text()
     except OSError:
         pass
-    return {"summary": _summary(run_id, result, patch), "result": result, "fix_patch": patch}
+    review = _review(_reviews(), run_id)
+    return {"summary": _summary(run_id, result, patch, review), "result": result, "fix_patch": patch}
 
 
 # Agent view: the same facts as the site, in plain text. Paths are relative on purpose.
@@ -280,6 +305,7 @@ _STATUS_WORD = {
     "runs_with_gaps": "Runs with gaps",
     "fix_awaiting_approval": "Fix verified · awaiting approval",
     "fix_skipped_tests": "Fix skipped tests · not a repair",
+    "fix_rejected_on_review": "Fix rejected on review",
     "broken": "Broken",
     "fixed": "Fixed, unverified",
 }
@@ -297,6 +323,7 @@ _HOW = """## How a run is proved
 - `runs_with_gaps` (◐ Runs with gaps): the verifier passed, and the record lists `gaps` (things it could not exercise, such as a missing test script).
 - `fix_awaiting_approval` (◆ Fix verified · awaiting approval): the fix passed in the clean container and changes source code, so it waits for the owner's approval. The repository itself does not run clean yet; `verified` is true because the verifier passed.
 - `fix_skipped_tests` (✗ Fix skipped tests · not a repair): the patch only excluded tests (a `match_*` or `no_match_*` key added to `foundry.toml`, a deleted test file, or a changed `test` script in `package.json`). It is not counted as a repair and is never featured. `weakens_tests` is true.
+- `fix_rejected_on_review` (✗ Fix rejected on review): the owner reviewed the fix and rejected it (`review.verdict` is `rejected`, `review.reason` says why). It is never featured and never counted as verified. An approved fix keeps its status and carries `review.verdict` `approved`.
 - `broken` (✗ Broken): a step failed and no verified fix exists.
 - `checking` (◌ Checking): the run has started and has no record yet.
 - `fixed` (◐ Fixed, unverified): only in records from an earlier agent version that have no verifier steps at all.
@@ -306,7 +333,7 @@ A run counts as verified only when `verified` is true: the verifier has at least
 
 _API = """## API (read-only, JSON)
 
-- `GET /api/runs`: every run, newest first. Each item carries `id`, `repo`, `sha`, `path`, `type`, `status`, `set` (`heldout`, `dev` or null), `agent_version`, `sweep_id`, `weakens_tests`, `verified`, `duration_s`, `model_calls`, `fix_kind` (`config`, `code` or null), `needs_approval`, `gaps`, `agent_steps` and `verifier_steps` (`name`, `ok`, `duration_s`), `attempts` (`kind`, `files`, `result`, `status`, `confidence`, `rationale`), `error_line`, `problems`, `patch_preview`.
+- `GET /api/runs`: every run, newest first. Each item carries `id`, `repo`, `sha`, `path`, `type`, `status`, `set` (`heldout`, `dev` or null), `agent_version`, `sweep_id`, `weakens_tests`, `verified`, `duration_s`, `model_calls`, `fix_kind` (`config`, `code` or null), `needs_approval`, `gaps`, `agent_steps` and `verifier_steps` (`name`, `ok`, `duration_s`), `attempts` (`kind`, `files`, `result`, `status`, `confidence`, `rationale`), `review` (`verdict`, `reason`, `reviewed_at`, or null), `error_line`, `problems`, `patch_preview`.
 - `GET /api/runs/{id}`: one run as `{summary, result, fix_patch}`. `result` is the full record: steps with commands, exit codes, durations and output tails, model calls, and attempts. `fix_patch` is a unified diff or null.
 - Run ids look like `20261010T120139Z-5c3370f` (UTC start time, then the short commit).
 
@@ -336,7 +363,7 @@ def _agent_view(short: bool) -> str:
             live = "## Latest run per repository\n\n" + "\n".join(
                 f"- [{r['repo']}{'/' + r['path'] if r['path'] else ''}](/runs/{r['id']}): "
                 f"{_STATUS_WORD.get(r['status'], r['status'])}"
-                f"{', verified' if r['verified'] and r['status'] not in ('fix_awaiting_approval', 'fix_skipped_tests') else ''}"
+                f"{', verified' if r['verified'] and r['status'] not in ('fix_awaiting_approval', 'fix_skipped_tests', 'fix_rejected_on_review') else ''}"
                 f"{', fix: ' + r['fix_kind'] if r['fix_kind'] else ''}"
                 for r in latest.values()
             ) + "\n\n"
@@ -469,12 +496,14 @@ def _run_card(run_id: str) -> tuple[str, str] | None:
         patch = (_run_dir(run_id) / "fix.patch").read_text()
     except (OSError, HTTPException):
         patch = None
-    status = _status(result, _weakens_tests(patch))
+    status = _status(result, _weakens_tests(patch), _review(_reviews(), run_id))
     word = _STATUS_WORD.get(status, status)
     n = len((result.get("agent") or {}).get("attempts") or [])
     tried = f"{n} repair attempt{'' if n == 1 else 's'}" if n else "no repair attempted"
     if status == "fix_skipped_tests":
         proof = "tests were skipped, not repaired"
+    elif status == "fix_rejected_on_review":
+        proof = "the owner rejected the fix on review"
     elif _verified(result) and status != "fix_awaiting_approval":
         proof = "verified in a clean container"
     elif status == "fix_awaiting_approval":

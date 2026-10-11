@@ -184,7 +184,7 @@ function RunBody({ d }: { d: RunDetail }) {
     }
     if (!live()) return;
     setState("done");
-    if (s.verified && s.status !== "fix_awaiting_approval" && s.status !== "fix_skipped_tests") lift(); // the lifted-r wordmark rises once the replay verifies clean
+    if (s.verified && s.status !== "fix_awaiting_approval" && s.status !== "fix_skipped_tests" && s.status !== "fix_rejected_on_review") lift(); // the lifted-r wordmark rises once the replay verifies clean
   }, [events, reduce, s.verified, s.status]);
 
   // Verified means the separate clean container ran steps and all of them passed (decided by the API).
@@ -240,6 +240,16 @@ function RunBody({ d }: { d: RunDetail }) {
               >
                 Open the fix diff
               </button>
+            </p>
+          )}
+          {s.status === "fix_rejected_on_review" && (
+            <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
+              The owner rejected this fix on review{s.review?.reason ? `: ${s.review.reason}` : "."}
+            </p>
+          )}
+          {s.review?.verdict === "approved" && (
+            <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
+              Approved by the owner{s.review.reason ? `: ${s.review.reason}` : "."}
             </p>
           )}
           {skipped && (
