@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { ShaderBackdrop } from "@/components/shader-bg";
 import { useInView } from "@/lib/inview";
 import { cn } from "@/lib/utils";
 
@@ -32,14 +33,8 @@ export function BackgroundArt() {
   const rise = useTransform(scrollYProgress, [0, 0.4], [0, -90]);
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      {/* A soft pool of the accent colour behind the hero; tokens only, so it follows the theme. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse 55% 45% at 78% 12%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%)",
-        }}
-      />
+      {/* A slow shader field at every width; the CSS accent pool where WebGPU is missing. Tokens only. */}
+      <ShaderBackdrop />
       <div
         className="absolute inset-0"
         style={{
