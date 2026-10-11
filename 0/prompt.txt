@@ -1,0 +1,38 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read web/NOTES.md, docs/ANIMATION.md and the landing's "Checked repositories" section in web/src/pages/Landing.tsx (the latest-run-per-repository list, "Latest run per repository, straight from the run records.") first.
+
+The owner says this list takes too much vertical space: 27 full-width rows. Make it compact. Keep the content and the honesty.
+
+1. **A dense grid.** Lay the rows out as a responsive grid of compact rows: 3 columns at lg and up, 2 at sm, 1 on phones. Each cell holds the repo name (with the `/path` muted, as now), the duration and the existing status badge.
+   - Truncate long names with an ellipsis and keep the full name in a `title` tooltip.
+   - Keep the status badge readable; don't shrink it below the current text size.
+   - The cell links to the run, as the row does now.
+2. **Collapse to 12.**
+   - Show the first 12 repos (keep the current order), with a button "Show all 27 repositories". Compute the count from the data, and don't hardcode it.
+   - The button expands in place and becomes "Show fewer".
+   - Use a real `<button>` with `aria-expanded`, and keep focus on it.
+   - The expand follows docs/ANIMATION.md: one easing, a short reveal, and nothing under reduced motion.
+3. **Summary line on top.** One line of counts per status (for example "11 run · 3 run with gaps · 10 broken · 2 skipped tests · 1 unsupported"), using the same words and glyphs as the badges.
+4. **Check.**
+   - Run `npm run build`.
+   - Run `web/check-render.mjs` (360, 420 and 1280, light and dark): no page-level sideways scroll.
+   - Measure and report the section's height before and after at 1280.
+   - Take a close-up screenshot at 1280 and 360, and look at it yourself.
+
+Commit in one or two commits.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- No tool or AI attribution in commits.
+- Finish with a short report: what changed, the heights, the check results and screenshot paths.
+
+---
+
+<task-notification>
+<task-id>bekzjnh8a</task-id>
+<tool-use-id>toolu_01GKNYE32FU4bKxa7vxsQach</tool-use-id>
+<output-file>/tmp/claude-1000/-home-timidan-Desktop-resurgo-web/a6a133b1-195e-4f77-9899-02e17ec599a2/tasks/bekzjnh8a.output</output-file>
+<status>failed</status>
+<summary>Background command "Run render check against the stand-in server" failed with exit code 1</summary>
+</task-notification>
