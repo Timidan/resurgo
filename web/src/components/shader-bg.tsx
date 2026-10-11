@@ -51,30 +51,27 @@ function readField(theme: "light" | "dark"): Field | null {
   const accent = tok("--accent");
   const evidence = tok("--evidence");
   if (!parse(canvas) || !parse(accent) || !parse(evidence)) return null;
+  const secondary = tok("--secondary");
   const dark = theme === "dark";
   const pole = dark ? "#000000" : "#ffffff";
-  const target = luminance(canvas);
-  // Tint the canvas with a token, then move toward white (light) or black (dark) until it is no
-  // longer on the wrong side of the canvas's luminance.
+  const ratio = (a: string, b: string) => {
+    const x = luminance(a);
+    const y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+  // Tint the canvas with a token, then ease it toward white (light) or black (dark) only as far as
+  // the secondary text needs to keep 4.5:1 over it.
   const tint = (token: string, amount: number) => {
-    const c = mix(canvas, token, amount);
-    const wrong = (h: string) => (dark ? luminance(h) > target : luminance(h) < target);
-    if (!wrong(c)) return c;
-    let lo = 0;
-    let hi = 1;
-    for (let i = 0; i < 14; i++) {
-      const mid = (lo + hi) / 2;
-      if (wrong(mix(c, pole, mid))) lo = mid;
-      else hi = mid;
-    }
-    return mix(c, pole, hi);
+    let c = mix(canvas, token, amount);
+    for (let i = 0; i < 24 && parse(secondary) && ratio(secondary, c) < 4.6; i++) c = mix(c, pole, 0.08);
+    return c;
   };
   const edge = mix(canvas, pole, dark ? 0.6 : 1);
   return {
     base: edge,
-    cool: tint(accent, 0.5),
-    warm: tint(evidence, 0.2),
-    soft: edge,
+    cool: tint(accent, 0.3),
+    warm: tint(evidence, 0.55),
+    soft: tint(accent, 0.12),
   };
 }
 
