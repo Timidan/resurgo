@@ -78,8 +78,8 @@ Projects rot while nobody is looking: a lockfile written by a newer package mana
 
 | Product | What it does in Resurgo |
 |---|---|
-| **neatlogs** | Traces every run: one workflow span per run, a tool span per step with its command and output, and each model call. An agent-judge evaluator grades runs independently of Resurgo's own verdict. A detection with an in-app alert flags fixes waiting for approval; a second detection is set up to flag proposals the guard refuses. |
-| **Entire** | Checkpoints every coding session that built Resurgo; 72 are public, and build-session commits carry an `Entire-Checkpoint` trailer. `entire graph search` gives the repair model repository context. |
+| **neatlogs** | Traces every run: one workflow span per run, a tool span per step with its command and output, and each model call. An agent-judge evaluator grades runs independently of Resurgo's own verdict. A detection with an in-app alert flags fixes waiting for approval; a second detection is set up to flag proposals the guard refuses. The coding sessions that build Resurgo are traced too, through neatlogs' session hooks. |
+| **Entire** | Checkpoints every coding session that built Resurgo. 73 are public; the rest stay local because they captured private paths. Build-session commits carry an `Entire-Checkpoint` trailer. `entire graph search` gives the repair model repository context. |
 | **cfo.ai** | A business plan built with Ari from measured run costs: pricing, unit economics and a 12-month forecast. [Read the plan](https://cfo.ai/s/pDpH9dFTal4PAy76). |
 
 Also used: **LangGraph** (the repair loop), **FastAPI** (the runs API and the site), React 19, Vite, Tailwind CSS v4, Docker, and a model gateway serving gpt-5.6-luna.
