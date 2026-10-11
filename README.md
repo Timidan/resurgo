@@ -79,7 +79,7 @@ Projects rot while nobody is looking: a lockfile written by a newer package mana
 | Product | What it does in Resurgo |
 |---|---|
 | **neatlogs** | Traces every run: one workflow span per run, a tool span per step with its command and output, and each model call. An agent-judge evaluator grades runs independently of Resurgo's own verdict. A detection with an in-app alert flags fixes waiting for approval; a second detection is set up to flag proposals the guard refuses. The coding sessions that build Resurgo are traced too, through neatlogs' session hooks. |
-| **Entire** | Checkpoints every coding session that built Resurgo. 73 are public; the rest stay local because they captured private paths. Build-session commits carry an `Entire-Checkpoint` trailer. `entire graph search` gives the repair model repository context. |
+| **Entire** | Checkpoints every coding session that built Resurgo. 73 are public and [browsable on entire.io](https://entire.io/gh/Timidan/resurgo/sessions); the rest stay local because they captured private paths. Build-session commits carry an `Entire-Checkpoint` trailer. `entire graph search` gives the repair model repository context. |
 | **cfo.ai** | A business plan built with Ari from measured run costs: pricing, unit economics and a 12-month forecast. [Read the plan](https://cfo.ai/s/pDpH9dFTal4PAy76). |
 
 Also used: **LangGraph** (the repair loop), **FastAPI** (the runs API and the site), React 19, Vite, Tailwind CSS v4, Docker, and a model gateway serving gpt-5.6-luna.
@@ -175,7 +175,7 @@ Every state is a word and a glyph, on the site and in the records.
 | An honest baseline | v1 on 24 held-out repositories: 13 passed the verifier, 2 of them only by skipping tests, and 1 was a genuine fix (xsv's toolchain pin). v2.1's guard refuses test skips. |
 | An independent judge | neatlogs' agent judge over 23 v1 held-out traces agrees with the run records on 22. It passed vulcan's test skip, which the code guard refuses. |
 | A real pull request | [Timidan/rinne#1](https://github.com/Timidan/rinne/pull/1), opened by `resurgo-agent[bot]`: one `packageManager` line, verified before it was opened. |
-| An Entire checkpoint | `01M4MYQFSKXF617DT4JF4GXY0V`, on commit [de9f945](https://github.com/Timidan/resurgo/commit/de9f945b86a2747d4795501bd33041aa6b906808), which added the guard against gutted files and low-confidence code. All checkpoints are under `refs/entire/checkpoints/`; Entire's [build dispatch](docs/evidence/entire/dispatch-2026-10-11.md) summarises them. |
+| An Entire checkpoint | [`01M4MYQFSKXF617DT4JF4GXY0V`](https://entire.io/gh/Timidan/resurgo/commit/de9f945b86a2747d4795501bd33041aa6b906808), on the commit that added the guard against gutted files and low-confidence code, with [the session that wrote it](https://entire.io/gh/Timidan/resurgo/session/e29c25fe-91e1-4850-a3dd-c71d327fc3e2). Every published build session is on [entire.io](https://entire.io/gh/Timidan/resurgo/sessions), and Entire's [build dispatch](docs/evidence/entire/dispatch-2026-10-11.md) summarises them. |
 | A business case | [cfo.ai plan](https://cfo.ai/s/pDpH9dFTal4PAy76): $0.0112 per check, $12 a month for 10 repositories, break-even at 3 paying accounts on one $7 server. [Summary](docs/evidence/cfo/README.md). |
 
 The build log, decision by decision, is [hackathon.md](hackathon.md).
