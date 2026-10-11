@@ -359,7 +359,7 @@ function Problem({ data }: { data: LandingData }) {
           <h2 className="max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">Projects rot while you&apos;re not looking.</h2>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">Nothing in the repository changed. These are the real causes Resurgo recorded.</p>
         </Reveal>
-        <ol className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-3" role="list">
+        <ol className={`mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border ${data.problems.length >= 3 ? "lg:grid-cols-3" : data.problems.length === 2 ? "lg:grid-cols-2" : ""}`} role="list">
           {data.problems.map((p, i) => (
             <li key={p.key} className="bg-canvas">
               <Reveal delay={i * 0.12} className="flex h-full flex-col p-6">
