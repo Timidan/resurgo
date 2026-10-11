@@ -565,7 +565,7 @@ function Pricing() {
 
         <p className="mt-4 text-sm text-muted-foreground">{p.caveat}</p>
         <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-          <Logo name="cfo" size="22px" className="text-foreground" />
+          <Logo name="cfo" size="36px" className="text-foreground" />
           <span>
             {p.source}{" "}
             <a
