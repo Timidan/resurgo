@@ -1,0 +1,42 @@
+You are working on Resurgo's web app on the `web` branch in this worktree. Read web/NOTES.md, docs/ANIMATION.md, web/src/pages/Landing.tsx and web/src/pages/landing-data.ts first.
+
+Add a pricing section to the landing page, between the "Works with" logo row and the closing "Install it. Pick the repos." section. The numbers come from a business plan built in cfo.ai from Resurgo's measured runs. Use exactly the copy and numbers below; don't add claims, features or numbers. Put the copy in landing-data.ts, as the other sections do.
+
+**Copy**
+
+- Eyebrow: `Pricing`
+- Heading (h2): `Priced from what a check costs to run.`
+- Intro: `Nothing is billed today. This is the pricing the cfo.ai plan recommends, worked out from Resurgo's measured runs.`
+- Two plan cards:
+  - `Free` · `$0` · `Weekly checks on up to 3 public repositories.`
+  - `Team` · `$12` with `per account, per month` · `Nightly checks and verified-fix pull requests on up to 10 repositories.`
+- Four figures, each a big number with a short label:
+  - `$0.0112` · `to run one check: compute plus a model-call ceiling`
+  - `$3.35` · `a month to serve a full 10-repo account`
+  - `66.7%` · `gross margin after payment fees`
+  - `3` · `paying accounts to break even on one $7 server, with 25 free`
+- Caveat line, small and muted: `The plan assumes 10–40% of broken repos get a verified fix. Agent v1 fixed 1 of 11 on the held-out set.`
+- Source line with the cfo.ai logo (`/logos/cfo.svg`, the original asset, clearly visible): `Plan built with Ari in cfo.ai.` followed by a link `Read the plan` to https://cfo.ai/s/pDpH9dFTal4PAy76 (new tab, `rel="noopener noreferrer"`).
+
+**Design**
+
+- Match the landing's existing sections: the same container widths, type scale, tokens, borders and panel backgrounds. Use no new colours and add no dependency.
+- Neither card is a call to action; there's nothing to buy. Don't add buttons to the cards. Mark the Team card as the plan's recommendation with a small `Recommended by the plan` label, not with a loud colour.
+- The four figures sit in one row at lg, 2 × 2 on phones. Use tabular numbers.
+- Motion follows docs/ANIMATION.md: at most one short reveal with the page's easing, and nothing under reduced motion.
+- Phones: one column for the cards, a 16 px side gutter, and no sideways scroll.
+
+**Check**
+
+- Run `npm run build`.
+- Run `web/check-render.mjs` at 360, 420 and 1280, light and dark, against the API on port 8787. There must be no page-level sideways scroll.
+- Take close-up screenshots of the new section at 1280 and 360, and look at them yourself. Check that the cfo.ai logo is visible in both themes and that the link works.
+
+Commit in one or two commits.
+
+Rules:
+- Don't push, don't merge, and don't edit hackathon.md.
+- Never read `.env` or `.entire/settings.local.json`.
+- Run no `docker` commands.
+- No tool or AI attribution in commits.
+- Finish with a short report: what changed, the check results and screenshot paths.
