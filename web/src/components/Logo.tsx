@@ -11,7 +11,7 @@ import { useTheme } from "@/lib/theme";
 const MASKS = {
   neatlogs: { name: "neatlogs", file: "neatlogs-wordmark.webp", ratio: 1100 / 243, dark: "#F5F5F2" }, // light: the page's ink (text-foreground)
   entire: { name: "Entire", file: "entire.svg", ratio: 959.94 / 236.81, light: "#1C1917", dark: "#FFFFFF" },
-  cfo: { name: "cfo.ai", file: "cfo.svg", ratio: 1 },
+  cfo: { name: "cfo.ai", file: "cfo.svg", ratio: 100 / 31 },
   github: { name: "GitHub", file: "github.svg", ratio: 1, light: "#1F2328", dark: "#FFFFFF" },
   bun: { name: "Bun", file: "bun.svg", ratio: 1 },
 } as const;
