@@ -1,0 +1,44 @@
+You are building Resurgo during neatHack. Read hackathon.md, resurgo/run.py, resurgo/agent.py, resurgo/worker.py, api/main.py and web/src/lib/run.ts first. This is agent v2.4. It has three parts. Keep each one small.
+
+## 1. Use neatlogs' own fields (tracing only, no change to agent behaviour)
+
+Today the runs are hard to query in neatlogs: repo, sweep and version sit in custom span attributes, and tool steps have no input or output. neatlogs' AI search struggled to tell runs apart. Use the SDK's documented fields. Copies of the docs pages are in /tmp/claude-1000/-home-timidan-Desktop-neatharness/457a6a36-16f5-4310-8c76-7e25ac551443/scratchpad/neatdocs/; read them, and verify the exact names against the installed neatlogs package (`uv run python -c "import neatlogs, inspect; ..."`) before using them.
+
+- **Tags** on `neatlogs.init(...)`: `agent:<agent_version>`, `set:<set>`, `sweep:<sweep_id>` and `repo:<owner/name>`, for the ones that are set.
+- **Session per repo and path.** On the root `resurgo.run` WORKFLOW span, set the session to `<owner/name>@<path or .>`, so every run of a repo is one session and v1 and v2 runs of the same repo sit side by side. Use the SDK's `session_id` on `neatlogs.trace`, or `neatlogs.identify`.
+- **End user.** For runs from the install worker, the end user is the installation's account (`end_user_id`), with `end_user_metadata={"source": "install"}`. Sweeps use the repo owner, with `{"source": "sweep"}`. Pass these into `resurgo.run` with a small CLI option and environment variable, and set them from the worker and the sweep.
+- **Tool spans** (`agent.install`, `verifier.build` and the rest): set the documented `neatlogs.tool.*` attributes, including the tool's input (the command) and output (the last lines of output), so neatlogs can render them. Mark failed steps as errors, as today.
+- **Root span output:** a one-line summary such as `rinne · runs · 1 attempt · 0 model calls · 374s`.
+
+Write a unit test only where there's logic, such as the session string and the tag list.
+
+## 2. Guard against fixes that gut the app
+
+A v2.3 run on Timidan/agent-arena (`ui`) passed the serve step by replacing the app's root page with a stub "dependency-free server component", at confidence 0.36. The prompt forbids weakening checks, but only a guard enforces it. Before applying a **code** proposal, reject it when:
+
+- a modified source file loses more than half of its non-blank lines, and more than 15 lines in total; or
+- the proposal's confidence is below 0.5.
+
+Use the same single re-ask as the existing weakening guard, with the reason "this removes most of a file" or "confidence too low for a code change". A config proposal is never subject to the confidence floor. Add the smallest test cases.
+
+## 3. Review verdicts
+
+Code fixes wait for the owner's approval, but there's no way to record a decision. Add a plain file, `runs/reviews.json`, shaped as `{"<run_id>": {"verdict": "approved"|"rejected", "reason": "...", "reviewed_at": "<UTC ISO>"}}`.
+
+- `api/main.py` reads it, and summaries and run details carry `review`.
+- A run with `review.verdict == "rejected"` gets status `fix_rejected_on_review`, worded "Fix rejected on review", styled like broken, never featured, and never counted as verified.
+- An approved code fix keeps its status and shows "Approved by the owner".
+- The run view shows the reason.
+- `resurgo/pr.py` refuses a run whose verdict is rejected.
+- Add one API test.
+
+Bump `__version__` to "0.2.4". Run `uv run --with pytest pytest -q resurgo` and the api tests. Commit in small steps and add a short hackathon.md entry.
+
+Rules:
+- Never push.
+- Never read `.env` or `.entire/settings.local.json`.
+- Don't run the agent against the held-out set.
+- No unfiltered `docker ps`, `docker network ls` or `docker images`.
+- Never print secrets, server addresses or account names. Use environment variables for host paths.
+- No tool or AI attribution in commits.
+- Finish with a short report.
