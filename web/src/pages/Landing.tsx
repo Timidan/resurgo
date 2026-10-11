@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimIcon, type IconName } from "@/components/art";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -12,7 +12,7 @@ import { Story, StorySkeleton } from "@/components/Story";
 import { Terminal, type TermRow } from "@/components/Terminal";
 import { AgentOrb, Eyebrow, Mark, Reveal, StatusBadge } from "@/components/ui-bits";
 import type { RunDetail, RunSummary, Step } from "@/lib/api";
-import { fixLabel, fmtDur, isShowable, parsePatch, statusMeta, stepOk } from "@/lib/run";
+import { fixLabel, fmtDur, isShowable, parsePatch, STATUS_ORDER, statusMeta, stepOk } from "@/lib/run";
 import { cn, INSTALL_URL } from "@/lib/utils";
 import { useLandingData, type LandingData, type StatGroup } from "./landing-data";
 
@@ -188,6 +188,85 @@ function Steps({ data }: { data: LandingData }) {
 }
 
 /* 4. Your projects --------------------------------------------------------- */
+const COLLAPSED_REPOS = 12;
+
+/** "✓ 11 Runs · ◐ 3 Runs with gaps · …": the badges' own words and glyphs, one count per status. */
+function statusCounts(runs: RunSummary[]) {
+  const by = new Map<string, { n: number; m: ReturnType<typeof statusMeta> }>();
+  for (const r of runs) {
+    const m = statusMeta(r.status);
+    const k = `${m.glyph} ${m.word}`;
+    by.set(k, { n: (by.get(k)?.n ?? 0) + 1, m });
+  }
+  const rank = (w: string) => { const i = STATUS_ORDER.indexOf(w); return i < 0 ? STATUS_ORDER.length : i; };
+  return [...by.entries()].sort(([, a], [, b]) => rank(a.m.word) - rank(b.m.word));
+}
+
+function RepoCell({ r }: { r: RunSummary }) {
+  const name = `${r.repo}${r.path ? `/${r.path}` : ""}`;
+  return (
+    <li>
+      <Link
+        to={`/runs/${r.id}`}
+        title={name}
+        className="flex h-full min-w-0 flex-col gap-1.5 rounded-md border border-border bg-panel px-3 py-2 hover:bg-muted"
+      >
+        <span className="block w-full truncate font-semibold">
+          {r.repo}{r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
+        </span>
+        <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <StatusBadge status={r.status} className="max-w-full rounded-xl" />
+          <span className="font-mono text-sm tabular-nums text-muted-foreground">{fmtDur(r.duration_s)}</span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function RepoGrid({ runs }: { runs: RunSummary[] }) {
+  const [open, setOpen] = useState(false);
+  const head = runs.slice(0, COLLAPSED_REPOS);
+  const rest = runs.slice(COLLAPSED_REPOS);
+  const grid = "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3";
+  return (
+    <div className="mt-8">
+      <p className="mb-3 text-sm text-muted-foreground">
+        {statusCounts(runs).map(([k, { n, m }], i, all) => (
+          <Fragment key={k}>
+            <span className="whitespace-nowrap">
+              <span aria-hidden className={cn("font-mono", m.text)}>{m.glyph}</span> {n} {m.word}
+              {i < all.length - 1 ? " ·" : ""}
+            </span>{" "}
+          </Fragment>
+        ))}
+      </p>
+      <ul className={grid} role="list">
+        {head.map((r) => <RepoCell key={r.id} r={r} />)}
+      </ul>
+      {rest.length > 0 && (
+        <>
+          <div id="repo-more" className="fold" data-open={open}>
+            <div className="-mx-1 -mb-1 min-h-0 overflow-hidden px-1 pb-1">
+              <ul className={cn(grid, "mt-2")} role="list">
+                {rest.map((r) => <RepoCell key={r.id} r={r} />)}
+              </ul>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="repo-more"
+            onClick={() => setOpen((o) => !o)}
+            className="press mt-3 rounded-md border border-control px-3 py-1.5 text-sm font-semibold hover:bg-muted pointer-coarse:min-h-11 pointer-coarse:px-4"
+          >
+            {open ? "Show fewer" : `Show all ${runs.length} repositories`}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Projects({ data }: { data: LandingData }) {
   const f = data.featured;
   if (!data.latest.length) return null;
@@ -198,19 +277,7 @@ function Projects({ data }: { data: LandingData }) {
         <Reveal className="min-w-0">
           <Eyebrow>Checked repositories</Eyebrow>
           <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">One status per repository, in plain words.</h2>
-          <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-panel" role="list">
-            {data.latest.map((r) => (
-              <li key={r.id}>
-                <Link to={`/runs/${r.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-muted">
-                  <span className="min-w-[12rem] flex-1 truncate font-semibold">
-                    {r.repo}{r.path ? <span className="font-normal text-muted-foreground">/{r.path}</span> : null}
-                  </span>
-                  <span className="font-mono text-sm tabular-nums text-muted-foreground">{fmtDur(r.duration_s)}</span>
-                  <StatusBadge status={r.status} />
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <RepoGrid runs={data.latest} />
           <p className="mt-3 text-sm text-muted-foreground">Latest run per repository, straight from the run records.</p>
         </Reveal>
         {a?.rationale && (

@@ -154,3 +154,4 @@ Not done / limits:
 - **Versions** display as `agent v1` or `early build` (`agentLabel`); the raw tag stays in Identifiers.
 - **Repo box** is "Find a repository in the gallery". **Run it yourself** links to the README section.
 - **Touch**: `pointer-coarse:` raises header links, install, theme toggle and copy to 44 px.
+- **Checked repositories** (landing): a 1/2/3-column grid of cells (name, status badge, duration), the first 12 shown, the rest behind a "Show all N repositories" button (N from the data, `aria-expanded`, same button keeps focus). The expand is a `.fold` row-track transition on `--ease-enter`/`--dur-chip`, none under reduced motion; folded cells are `visibility: hidden`, so not focusable. A summary line counts runs per status with the badges' own word and glyph (`STATUS_ORDER` in `lib/run.ts`).

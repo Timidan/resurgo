@@ -31,7 +31,10 @@ const STATUS: Record<string, StatusMeta> = {
   unsupported: { word: "Unsupported", glyph: "◌", tone: "bg-muted text-secondary", text: "text-secondary" },
 };
 
-export const statusMeta = (status: string): StatusMeta =>
+/** Badge words in the order above, for summaries that list every status. */
+export const STATUS_ORDER = Object.values(STATUS).map((m) => m.word);
+
+export const statusMeta =(status: string): StatusMeta =>
   STATUS[status] ?? { word: "Unknown", glyph: "?", tone: "bg-muted text-secondary", text: "text-secondary" };
 
 export function fmtDur(s: number | null | undefined): string {
