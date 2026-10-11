@@ -1,7 +1,7 @@
 import json
 from types import SimpleNamespace
 
-from resurgo.agent import build_graph, error_line, proposal_problem
+from resurgo.agent import build_graph, code_problem, error_line, proposal_problem
 
 
 class FakeBox:
@@ -76,6 +76,19 @@ def test_weakening_second_time_ends_broken():
     state, box, model = run("test", bad, bad)
     assert state["status"] == "broken" and "weakens tests" in state["detail"]
     assert len(model.calls) == 2 and "this skips or weakens tests" in model.calls[1][-1].content
+
+
+def test_code_guard_rejects_gutted_file_and_low_confidence():
+    page = "\n".join(f"line {i}" for i in range(40))
+    box = FakeBox("serve", {"app/page.tsx": page, ".nvmrc": "20\n"})
+    stub = {"kind": "code", "confidence": 0.8, "files": [{"path": "app/page.tsx", "content": "export {}\n"}]}
+    assert "removes most of a file" in code_problem(box, stub)
+    assert code_problem(box, {**stub, "files": [{"path": "app/page.tsx", "content": page[:-60]}]}) is None
+    assert "confidence too low" in code_problem(box, {**stub, "confidence": 0.36, "files": []})
+    state, _, model = run("serve", reply(kind="code", confidence=0.36, files=stub["files"]),
+                          reply(kind="config", files=[{"path": ".nvmrc", "content": "22\n"}]),
+                          files={"app/page.tsx": page})
+    assert state["status"] == "passed" and "confidence too low" in model.calls[1][-1].content
 
 
 def test_malformed_reask():

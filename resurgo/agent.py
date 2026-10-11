@@ -23,6 +23,8 @@ CONFIG_NAMES = {".nvmrc", ".node-version", ".npmrc", ".yarnrc", ".yarnrc.yml",
 PACKAGE_JSON_KEYS = {"packageManager", "engines", "volta", "pnpm", "overrides", "resolutions",
                      "devEngines"}
 LOCKFILE_NAMES = {n for n, _ in LOCKFILES} | {"Cargo.lock"}
+MIN_CODE_CONFIDENCE = 0.5  # a code proposal below this is sent back once
+GUT_LINES = 15             # a file may not lose more than this many non-blank lines and half of them
 UNFIXABLE_STEPS = {"toolchain"}
 GAP_STEPS = {"test", "serve"}      # a gap is accepted only here: install and build have passed
 FOUNDRY_FILTER = re.compile(r"^\s*(no_match_test|no_match_contract|no_match_path|match_test|"
@@ -158,6 +160,21 @@ def proposal_problem(box, proposal):
     return None, weak, code
 
 
+def code_problem(box, proposal):
+    """Why a code proposal must not be applied: too unsure, or it guts a source file (loses more
+    than half of its non-blank lines and more than GUT_LINES of them). None when it is fine."""
+    if proposal["confidence"] < MIN_CODE_CONFIDENCE:
+        return "confidence too low for a code change"
+    for f in proposal["files"]:
+        if f["path"].rsplit("/", 1)[-1] in LOCKFILE_NAMES | CONFIG_NAMES:
+            continue
+        old = sum(1 for l in (box.read(f["path"]) or "").splitlines() if l.strip())
+        new = sum(1 for l in f["content"].splitlines() if l.strip())
+        if old - new > GUT_LINES and new < old / 2:
+            return f"this removes most of a file: {f['path']} goes from {old} to {new} lines"
+    return None
+
+
 def error_line(out):
     """The most informative line of a step's output: the first line with an error word that is not
     a generic "command failed" wrapper, else the last non-empty line. At most 200 characters."""
@@ -288,6 +305,10 @@ def build_graph(box, model, deadline):
             return proposal, malformed, False
         if weak:
             return proposal, f"this skips or weakens tests: {weak}", True
+        if proposal["kind"] == "code" or code:
+            guard = code_problem(box, proposal)
+            if guard:
+                return proposal, guard, True
         return {**proposal, "code_reason": code}, None, False
 
     def propose(state, config: RunnableConfig):
