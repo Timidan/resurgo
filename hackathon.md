@@ -132,6 +132,8 @@ Timidan (solo, with coding agents).
   - cfo.ai: the plan is shared at https://cfo.ai/s/pDpH9dFTal4PAy76, and the landing page has a pricing section from it.
   - README rewritten with the evidence table; screenshots and logos are in docs/assets.
 
+- v2 held-out sweep (sweep `v2-heldout`, 11 Oct, v2.3 code tagged `v2`), same 24 repos as v1: runnable 11 → 15 (runs 8 → 8, runs with gaps 3 → 7), broken 10 → 8, unsupported 1 → 1, fixes that only skipped tests 2 → 0, genuine fixes 1 → 2, model calls 27 → 26, 183 → 239 minutes. vulcan and solidity-foundry-boilerplate, the two v1 test skips, now record a gap instead (missing huffc/fe and services; a MAINNET_RPC integration test), and the boilerplate also gets the pnpm pin. packrun now installs and builds (no test script). DeFiVulnLabs' gap note also admits local test failures: a soft pass. The guard never fired in the sweep.
+
 ## Demo
 Live site: https://resurgo.timidan.xyz. The video is not recorded yet.
 
