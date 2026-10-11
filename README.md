@@ -78,7 +78,7 @@ Projects rot while nobody is looking: a lockfile written by a newer package mana
 
 | Product | What it does in Resurgo |
 |---|---|
-| **neatlogs** | Traces every run: one workflow span per run, a tool span per step with its command and output, and each model call. An agent-judge evaluator grades runs independently of Resurgo's own verdict. A detection with an in-app alert flags fixes waiting for approval; a second detection is set up to flag proposals the guard refuses. The coding sessions that build Resurgo are traced too, through neatlogs' session hooks. |
+| **neatlogs** | Traces every run: one workflow span per run, a tool span per step with its command and output, and each model call. An agent-judge evaluator grades runs independently of Resurgo's own verdict. A detection with an in-app alert flags fixes waiting for approval; a second detection flags proposals the guard refused (it caught hop's test-script change in the v2 sweep). The coding sessions that build Resurgo are traced too, through neatlogs' session hooks. |
 | **Entire** | Checkpoints every coding session that built Resurgo. 73 are public and [browsable on entire.io](https://entire.io/gh/Timidan/resurgo/sessions); the rest stay local because they captured private paths. Build-session commits carry an `Entire-Checkpoint` trailer. `entire graph search` gives the repair model repository context. |
 | **cfo.ai** | A business plan built with Ari from measured run costs: pricing, unit economics and a 12-month forecast. [Read the plan](https://cfo.ai/s/pDpH9dFTal4PAy76). |
 
