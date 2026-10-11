@@ -122,8 +122,18 @@ Timidan (solo, with coding agents).
   - Guard: a code proposal is sent back once (the weakening guard's re-ask) when a modified source file loses more than half of its non-blank lines and more than 15, or when its confidence is below 0.5. A second rejection ends the run as `broken`. Config proposals are exempt, but a proposal labelled config that changes a non-config file is treated as code, as `apply` already does. Prompted by the v2.3 agent-arena `ui` run that passed serve by stubbing the root page at confidence 0.36.
   - Reviews: `runs/reviews.json` is `{run_id: {verdict, reason, reviewed_at}}`. A rejected run is `fix_rejected_on_review` ("Fix rejected on review"): styled like broken, not featured, not verified, and `resurgo.pr` refuses it. An approved fix keeps its status and shows "Approved by the owner". Nothing writes the file yet: it is edited by hand.
 
+- 11 Oct, partner tools and evidence. The agent's behaviour is unchanged, except that failed steps now mark their span as an error.
+  - neatlogs evals: an agent-judge evaluator, "Genuine repair", passes a run only when the clean verifier passes and any change is a real repair (no skipped or weakened tests, no stubbed code, no stripped files). Before saving, it was tried on three runs with known outcomes: gentether (as is), proof-of-regret (broken) and rinne (a rule fix). The first rubric made it say rinne needed no repair; pointing it at the attempts in the trace output fixed that.
+  - An eval batch ran it over the 23 v1 held-out traces from 10 Oct, 14:21 to 16:53 WAT. The traces were chosen by time window because neatlogs filters can't match raw span attributes (`unknown field "metadata:sweep_id"`); tags and sessions only arrive with v2.4. It agrees with the run records on 22 of 23. The miss is vulcan: its fix adds `no_match_path` and `no_match_test` to foundry.toml, and the judge passed it, repeating the attempt's own rationale about a TOML type. A prompt-based judge caught one of the two v1 test skips, so the rule stays in code.
+  - neatlogs detections and alerts: neatlogs suggested a "Workflow Approval Required Monitor" (workflow output contains `"status": "needs_approval"`); it flags 7 past spans and drives an in-app per-event alert, "Code fix waiting for the owner's approval". A regex detection, "Guard rejected a proposal", matches the guard's reasons in span output and in the re-ask's input. No run has triggered the guard yet, so it has no matches.
+  - neatlogs analytics reported a 0% error rate over 73 traces: failed steps carried only `neatlogs.tool.is_error`. They now also set the span status to ERROR, so error analysis and the "Execution Failed" detection see where repos break (1fda894).
+  - The coding sessions that build Resurgo are traced in neatlogs through its session hooks; the pricing session is the first one there.
+  - Entire: 73 checkpoints are published after the scan, and entire.io shows them without a login, e.g. checkpoint `01M4MYQFSKXF617DT4JF4GXY0V` on de9f945. `entire dispatch --local` wrote docs/evidence/entire/dispatch-2026-10-11.md from three days of checkpoints.
+  - cfo.ai: the plan is shared at https://cfo.ai/s/pDpH9dFTal4PAy76, and the landing page has a pricing section from it.
+  - README rewritten with the evidence table; screenshots and logos are in docs/assets.
+
 ## Demo
-Not available yet.
+Live site: https://resurgo.timidan.xyz. The video is not recorded yet.
 
 ## Known limitations and next steps
 - Foundry and Rust each have one real run that passed without a fix; the repair loop has not run on either.
