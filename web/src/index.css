@@ -452,12 +452,6 @@ p { text-wrap: pretty; }
   animation-play-state: paused;
 }
 
-/* The orb holds still unless the model is thinking. */
-.orb-still .siri-orb::before,
-.orb-still .siri-orb-sheen {
-  animation-play-state: paused !important;
-}
-
 /* Text cursor: solid while text is arriving, blinking only while it waits. */
 .stream-cursor {
   display: inline-block;

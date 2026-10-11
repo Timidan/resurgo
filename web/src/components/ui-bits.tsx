@@ -45,13 +45,13 @@ export function Reveal({
   );
 }
 
-/** The one orb: it moves only while the model is thinking. */
+/** The one orb: always moving. `idle` is its slow ambient state and `thinking` is faster; SiriOrb holds it still for reduced motion. */
 export function AgentOrb({ thinking, failed, size = 56 }: { thinking: boolean; failed?: boolean; size?: number }) {
   return (
-    <span className={cn("orb inline-block shrink-0", !thinking && "orb-still")} role="img" aria-label={thinking ? "Agent is thinking" : "Agent is idle"}>
+    <span className="orb inline-block shrink-0" role="img" aria-label={thinking ? "Agent is thinking" : "Agent is idle"}>
       <SiriOrb
         size={`${size}px`}
-        state={thinking ? "thinking" : failed ? "error" : "done"}
+        state={thinking ? "thinking" : failed ? "error" : "idle"}
         colors={{
           // Theme tokens, so the orb is a light object in light mode and a dark one in dark mode.
           bg: "var(--muted)",
