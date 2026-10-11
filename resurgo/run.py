@@ -2,7 +2,7 @@
 loop, then prove the fix in a second fresh container.
 
 Usage: uv run python -m resurgo.run <owner/repo> <sha> [--path <subdir>] [--agent-version V]
-       [--set NAME] [--sweep-id ID]
+       [--set NAME] [--sweep-id ID] [--end-user ID --end-user-source install|sweep]
 """
 import argparse
 import contextlib
@@ -31,6 +31,7 @@ NETWORK = "resurgo-runs"
 NODE_HOME, OTHER_HOME = "/home/node", "/tmp/home"
 PROBE = Path(__file__).with_name("probe.js").read_text()
 TAIL_LINES = 60
+TRACE_LINES = 20          # output lines a tool span carries
 LIMITS = ["--cpus", "2", "--memory", "6g", "--pids-limit", "512",
           "--cap-drop", "ALL", "--security-opt", "no-new-privileges"]
 # Frozen and regenerating install commands per package manager.
@@ -144,10 +145,35 @@ def tool_span(name):
     return contextlib.nullcontext(_NoSpan())
 
 
-def tool_span_root():
+def tool_span_root(repo="", subdir="", end_user=None):
+    """The root WORKFLOW span: one neatlogs session per repo and path, and the end user when known."""
     if TRACING:
-        return neatlogs.trace("resurgo.run", kind="WORKFLOW")
+        who = end_user or {}
+        return neatlogs.trace("resurgo.run", kind="WORKFLOW", session_id=session_id(repo, subdir),
+                              end_user_id=who.get("id"),
+                              end_user_metadata={"source": who["source"]} if who.get("source") else None)
     return contextlib.nullcontext(_NoSpan())
+
+
+def session_id(repo, subdir=""):
+    """Every run of a repo path is one session, so agent versions sit side by side."""
+    return f"{repo}@{subdir or '.'}"
+
+
+def trace_tags(tags, repo):
+    """neatlogs tags for the ones that are set: agent:<version>, set:<set>, sweep:<id>, repo:<repo>."""
+    pairs = (("agent", tags.get("agent_version")), ("set", tags.get("set")),
+             ("sweep", tags.get("sweep_id")), ("repo", repo))
+    return [f"{k}:{v}" for k, v in pairs if v]
+
+
+def run_summary(record):
+    """One line for the root span's output: rinne · runs · 1 attempt · 0 model calls · 374s."""
+    attempts = len(record["agent"].get("attempts", []))
+    calls = len(record.get("model_calls", []))
+    where = record["repo"].split("/")[-1] + (f"/{record['path']}" if record.get("path") else "")
+    return (f"{where} · {record['result']} · {attempts} attempt{'' if attempts == 1 else 's'} · "
+            f"{calls} model call{'' if calls == 1 else 's'} · {round(record['ended'] - record['started'])}s")
 
 
 class Box:
@@ -194,10 +220,11 @@ class Box:
             self.steps.append(rec)
             tail = "\n".join(rec["output_tail"])
             sp.set_attribute("neatlogs.tool.name", f"{self.role}.{name}")
-            sp.set_attribute("command", cmd)
+            sp.set_attribute("neatlogs.tool.description", f"{name} step in the {self.role} container")
+            sp.set_attribute("input.value", cmd)       # the SDK maps these to neatlogs.tool.input/output
+            sp.set_attribute("output.value", "\n".join(rec["output_tail"][-TRACE_LINES:]))
             sp.set_attribute("exit_code", rec["exit_code"])
             sp.set_attribute("duration_s", rec["duration_s"])
-            sp.set_attribute("output_tail", tail)
             if rec["exit_code"]:
                 sp.set_attribute("neatlogs.tool.is_error", True)
                 sp.set_attribute("error", tail.splitlines()[-1] if tail else f"exit {rec['exit_code']}")
@@ -231,6 +258,9 @@ class Box:
             ok = code == 0 and bool(text)
             files = list(dict.fromkeys(GRAPH_HIT.findall(text)))[:10] if ok else []
             sp.set_attribute("neatlogs.tool.name", "entire.graph.search")
+            sp.set_attribute("neatlogs.tool.description", "code regions related to the failure, from entire graph")
+            sp.set_attribute("input.value", query)
+            sp.set_attribute("output.value", "\n".join(files) or "no context")
             sp.set_attribute("query", query)
             sp.set_attribute("hits", len(files))
             sp.set_attribute("duration_ms", ms)
@@ -506,14 +536,14 @@ def ensure_network():
             raise RuntimeError(f"network create failed: {out.strip()}")
 
 
-def init_tracing():
+def init_tracing(tags=None):
     key = os.environ.get("NEATLOGS_API_KEY")
     if not key:
         print("warning: NEATLOGS_API_KEY not set, running without tracing", file=sys.stderr)
         return False
     try:
         neatlogs.init(api_key=key, endpoint="https://ingest.neatlogs.com",
-                      workflow_name="fresh-clone-check")
+                      workflow_name="fresh-clone-check", tags=tags or None)
         return True
     except Exception as e:  # tracing must never fail the run
         print(f"warning: neatlogs init failed: {scrub(str(e))}", file=sys.stderr)
@@ -569,6 +599,7 @@ def execute(repo, sha, subdir, root, tags):
     span_context = getattr(root, "get_span_context", None)   # absent when tracing is off
     if span_context:
         record["trace_id"] = format(span_context().trace_id, "032x")
+    root.set_attribute("input.value", f"{repo}@{sha[:12]} path={subdir or '.'}")
     root.set_attribute("repo", repo)
     root.set_attribute("sha", sha)
     for key in ("agent_version", "set", "sweep_id"):
@@ -628,6 +659,7 @@ def execute(repo, sha, subdir, root, tags):
     record["ended"] = time.time()
     record["result"] = result
     root.set_attribute("result", result)
+    root.set_attribute("output.value", run_summary(record))
     (out / "result.json").write_text(json.dumps(record, indent=2, default=str))
     calls = record.get("model_calls", [])
     why = "; ".join(record.get("gaps") or []) or record["agent"].get("detail", "")
@@ -640,13 +672,15 @@ def execute(repo, sha, subdir, root, tags):
     return 0 if result in ("runs", "runs_with_gaps") else 1
 
 
-def main(repo, sha, subdir="", tags=None):
+def main(repo, sha, subdir="", tags=None, end_user=None):
+    """`end_user` is {"id": ..., "source": "install" | "sweep"}: whose run this is, for neatlogs."""
     global TRACING
     load_dotenv()
-    TRACING = init_tracing()
+    subdir = subdir.strip("/")
+    TRACING = init_tracing(trace_tags(tags or {}, repo))
     try:
-        with tool_span_root() as root:
-            return execute(repo, sha, subdir.strip("/"), root, tags or {})
+        with tool_span_root(repo, subdir, end_user) as root:
+            return execute(repo, sha, subdir, root, tags or {})
     finally:
         if TRACING:
             try:
@@ -664,7 +698,12 @@ if __name__ == "__main__":
     ap.add_argument("--agent-version", help="tag the run (default: the package version)")
     ap.add_argument("--set", dest="set_name", help="evaluation set tag, e.g. dev or heldout")
     ap.add_argument("--sweep-id", help="sweep tag, set by resurgo.sweep")
+    ap.add_argument("--end-user", default=os.environ.get("RESURGO_END_USER"),
+                    help="neatlogs end user id (env RESURGO_END_USER): the installation's account or the repo owner")
+    ap.add_argument("--end-user-source", default=os.environ.get("RESURGO_END_USER_SOURCE"),
+                    help="where the run came from: install or sweep (env RESURGO_END_USER_SOURCE)")
     args = ap.parse_args()
     sys.exit(main(args.repo, args.sha, args.path,
                   {"agent_version": args.agent_version, "set": args.set_name,
-                   "sweep_id": args.sweep_id}))
+                   "sweep_id": args.sweep_id},
+                  {"id": args.end_user, "source": args.end_user_source}))

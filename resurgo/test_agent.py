@@ -143,6 +143,17 @@ def test_fill_env_regenerates_runner_env_but_keeps_committed(tmp_path):
     assert (repo / ".env").read_text() == "A=committed\n"
 
 
+def test_trace_session_tags_and_summary():
+    from resurgo import run as runner
+
+    assert runner.session_id("o/r", "") == "o/r@." and runner.session_id("o/r", "app") == "o/r@app"
+    assert runner.trace_tags({"agent_version": "v2.4", "set": None, "sweep_id": "dev-v2.4"}, "o/r") == \
+        ["agent:v2.4", "sweep:dev-v2.4", "repo:o/r"]
+    rec = {"repo": "Timidan/rinne", "path": "", "result": "runs", "started": 0, "ended": 374.4,
+           "agent": {"attempts": [{}]}, "model_calls": []}
+    assert runner.run_summary(rec) == "rinne · runs · 1 attempt · 0 model calls · 374s"
+
+
 def test_error_line_skips_wrappers():
     out = ("> vitest run\n\x1b[31mFAIL\x1b[0m src/a.test.ts > renders\nError: Test timed out in 5000ms.\n"
            " ELIFECYCLE  Command failed with exit code 1.\n")

@@ -237,7 +237,9 @@ def check(queue, status, it):
         try:
             rec = run_one({"repo": it["repo"], "sha": it["sha"], "path": it["path"]},
                           {"agent_version": __version__, "set": "install",
-                           "sweep_id": f"install-{status['installation_id']}"})
+                           "sweep_id": f"install-{status['installation_id']}"},
+                          {"id": status.get("account") or f"installation-{status['installation_id']}",
+                           "source": "install"})
         except Exception as e:      # one repo never stops the worker
             rec = {"result": "error", "agent": {"detail": f"{type(e).__name__}: {e}"}}
     if rec["result"] == "error":

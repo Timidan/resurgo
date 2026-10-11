@@ -54,7 +54,8 @@ def test_once_writes_contract_status(tmp_path, monkeypatch):
 
     ran = []
 
-    def fake_run(item, tags):
+    def fake_run(item, tags, end_user):
+        assert end_user == {"id": "octo", "source": "install"}
         ran.append(item["repo"])
         assert tags["set"] == "install"
         if item["repo"] == "octo/x1":
@@ -106,7 +107,7 @@ def test_waits_with_a_reason_while_a_sweep_runs(tmp_path, monkeypatch):
     sweeping = [True]
     monkeypatch.setattr(worker, "RUNS", tmp_path / "runs")
     monkeypatch.setattr(worker, "sweep_running", lambda: sweeping[0])
-    monkeypatch.setattr(worker, "run_one", lambda item, tags: {"run_id": "r1", "result": "runs"})
+    monkeypatch.setattr(worker, "run_one", lambda item, tags, end_user: {"run_id": "r1", "result": "runs"})
 
     assert worker.step(queue) is False
     waiting = json.loads((queue / "status" / "7.json").read_text())

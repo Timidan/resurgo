@@ -103,11 +103,14 @@ def write_summary(out, meta, entries):
         tmp.replace(out / name)
 
 
-def run_one(item, tags):
-    """Run one repo in its own process. Returns its result.json record, or an error record."""
+def run_one(item, tags, end_user=None):
+    """Run one repo in its own process. Returns its result.json record, or an error record.
+    `end_user` is {"id", "source"} for neatlogs; a sweep's default is the repo owner."""
+    end_user = end_user or {"id": item["repo"].split("/")[0], "source": "sweep"}
     cmd = [sys.executable, "-m", "resurgo.run", item["repo"], item["sha"],
            "--agent-version", tags["agent_version"], "--set", tags["set"],
-           "--sweep-id", tags["sweep_id"]]
+           "--sweep-id", tags["sweep_id"],
+           "--end-user", end_user["id"], "--end-user-source", end_user["source"]]
     if item.get("path"):
         cmd += ["--path", item["path"]]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
