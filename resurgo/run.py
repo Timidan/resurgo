@@ -18,6 +18,7 @@ from pathlib import Path
 
 import neatlogs
 from dotenv import load_dotenv
+from opentelemetry.trace import Status, StatusCode
 
 from resurgo import __version__
 from resurgo.agent import build_graph
@@ -138,6 +139,9 @@ class _NoSpan:
     def set_attribute(self, key, value):
         pass
 
+    def set_status(self, status):
+        pass
+
 
 def tool_span(name):
     if TRACING:
@@ -226,8 +230,10 @@ class Box:
             sp.set_attribute("exit_code", rec["exit_code"])
             sp.set_attribute("duration_s", rec["duration_s"])
             if rec["exit_code"]:
+                err = tail.splitlines()[-1] if tail else f"exit {rec['exit_code']}"
                 sp.set_attribute("neatlogs.tool.is_error", True)
-                sp.set_attribute("error", tail.splitlines()[-1] if tail else f"exit {rec['exit_code']}")
+                sp.set_attribute("error", err)
+                sp.set_status(Status(StatusCode.ERROR, err))   # neatlogs error analysis reads the status
         self.last_out = out
         return rec["exit_code"] == 0
 
